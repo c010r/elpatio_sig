@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView
 
@@ -159,7 +159,8 @@ class PosView(RoleRequiredMixin, View):
             return redirect("sales:pos")
 
         messages.success(request, f"Venta {sale.ticket_number} registrada.")
-        return redirect("sales:sale_detail", pk=sale.pk)
+        # ?auto=1: el ticket imprime y vuelve solo al POS (flujo de barra).
+        return redirect(reverse("sales:sale_detail", args=[sale.pk]) + "?auto=1")
 
 
 class SaleListView(RoleRequiredMixin, ListView):

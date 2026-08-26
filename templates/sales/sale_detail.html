@@ -139,3 +139,17 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+{% if request.GET.auto %}
+{# Flujo de barra: imprime el ticket y vuelve solo al POS para el siguiente cliente. #}
+<script>
+    setTimeout(function () {
+        window.print();
+        setTimeout(function () {
+            window.location.href = "{% url 'sales:pos' %}";
+        }, 800);
+    }, 3000);
+</script>
+{% endif %}
+{% endblock %}
