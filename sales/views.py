@@ -159,8 +159,11 @@ class PosView(RoleRequiredMixin, View):
             return redirect("sales:pos")
 
         messages.success(request, f"Venta {sale.ticket_number} registrada.")
-        # ?auto=1: el ticket imprime y vuelve solo al POS (flujo de barra).
-        return redirect(reverse("sales:sale_detail", args=[sale.pk]) + "?auto=1")
+        if request.POST.get("print_ticket"):
+            # Interruptor del POS: imprimir ticket y volver solo al POS.
+            return redirect(reverse("sales:sale_detail", args=[sale.pk]) + "?auto=1")
+        # Sin ticket: vuelta directa al POS (flujo rápido de barra).
+        return redirect("sales:pos")
 
 
 class SaleListView(RoleRequiredMixin, ListView):

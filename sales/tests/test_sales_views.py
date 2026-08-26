@@ -74,6 +74,35 @@ def test_bartender_pos_checkout_crea_venta(client_bartender, product, open_cash_
     assert product.stock_current == stock_inicial - Decimal("1")
 
 
+def test_pos_interruptor_imprimir_ticket(client_cajero, product, open_cash_register):
+    """Interruptor del POS: con print_ticket -> ticket auto-print; sin él -> POS directo."""
+    # Con el interruptor activado: redirige al ticket con ?auto=1
+    response = client_cajero.post(
+        reverse("sales:pos"),
+        {
+            "product_id": [str(product.id)],
+            "quantity": ["1"],
+            "payment_method": "efectivo",
+            "print_ticket": "on",
+        },
+    )
+    assert response.status_code == 302
+    assert response.get("Location", "").endswith("?auto=1")
+    assert "/ventas/ventas/" in response.get("Location", "")
+
+    # Sin el interruptor: vuelve directo al POS, sin página de ticket
+    response = client_cajero.post(
+        reverse("sales:pos"),
+        {
+            "product_id": [str(product.id)],
+            "quantity": ["1"],
+            "payment_method": "efectivo",
+        },
+    )
+    assert response.status_code == 302
+    assert response.get("Location") == reverse("sales:pos")
+
+
 def test_bartender_sale_detail_200(client_bartender, product, cajero_user, open_cash_register):
     """El bartender ve el ticket de sus ventas."""
     sale = Sale.complete_sale(
