@@ -56,8 +56,8 @@
             </a>
             {% endif %}
 
-            {# --- VENTAS: POS, listado, caja y clientes (cajero, gerente, admin) --- #}
-            {% if 'cajero' in group_names or 'gerente' in group_names or 'admin' in group_names or user.is_superuser %}
+            {# --- VENTAS: POS y listado (bartender, cajero, gerente, admin); caja y clientes (cajero, gerente, admin) --- #}
+            {% if 'bartender' in group_names or 'cajero' in group_names or 'gerente' in group_names or 'admin' in group_names or user.is_superuser %}
             <div class="sidebar-section">Ventas</div>
             <a href="{% url 'sales:pos' %}" class="nav-link {% if active == 'pos' %}active{% endif %}">
                 <span class="nav-icon"><i class="bi bi-cart3"></i></span><span>Punto de venta</span>
@@ -65,6 +65,7 @@
             <a href="{% url 'sales:sale_list' %}" class="nav-link {% if active == 'sale_list' or active == 'sale_detail' %}active{% endif %}">
                 <span class="nav-icon"><i class="bi bi-receipt"></i></span><span>Ventas</span>
             </a>
+            {% if 'cajero' in group_names or 'gerente' in group_names or 'admin' in group_names or user.is_superuser %}
             {% if open_cash_register %}
             <a href="{% url 'sales:cash_register_close' %}" class="nav-link {% if active == 'cash_register_close' %}active{% endif %}">
                 <span class="nav-icon"><i class="bi bi-lock-fill"></i></span><span>Cerrar caja</span>
@@ -81,6 +82,7 @@
             <a href="{% url 'sales:happy_hour_config' %}" class="nav-link {% if active == 'happy_hour_config' %}active{% endif %}">
                 <span class="nav-icon"><i class="bi bi-cup-straw"></i></span><span>Happy hour</span>
             </a>
+            {% endif %}
             {% endif %}
             {% endif %}
 

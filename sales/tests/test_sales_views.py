@@ -4,13 +4,15 @@ las URLs/vistas de sales).
 
 Matriz de permisos del contrato:
 - Cajero/Gerente/Admin: POS, caja, listado de ventas.
-- Gerente: anular ventas.
-- Bartender: NO accede a ventas/caja.
+- Bartender: POS, ventas y tickets (venta en barra) PERO NO gestiona caja;
+  solo anula SUS propias ventas (F2-06: autor o gerente/admin, motivo obligatorio).
+- Gerente: anular ventas (cualquiera).
 - Anónimo: redirect a login.
 """
 from decimal import Decimal
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import NoReverseMatch, reverse
 
 try:
@@ -21,6 +23,8 @@ except (ImportError, NoReverseMatch):
     pytest.skip("Vistas de sales no implementadas aún", allow_module_level=True)
 
 from conftest import assert_access_denied  # noqa: E402
+
+User = get_user_model()
 
 pytestmark = pytest.mark.django_db
 
@@ -39,10 +43,83 @@ def test_gerente_200(client_gerente, url_name):
     assert client_gerente.get(reverse(f"sales:{url_name}")).status_code == 200
 
 
-@pytest.mark.parametrize("url_name", ["pos", "sale_list", "cash_register_open", "sale_void"])
-def test_bartender_denegado(client_bartender, url_name):
-    kwargs = {"pk": 1} if url_name == "sale_void" else {}
-    assert_access_denied(client_bartender.get(reverse(f"sales:{url_name}", kwargs=kwargs)))
+@pytest.mark.parametrize("url_name", ["pos", "sale_list"])
+def test_bartender_200_ventas(client_bartender, url_name):
+    """Venta en barra: el bartender accede al POS y al listado de ventas."""
+    assert client_bartender.get(reverse(f"sales:{url_name}")).status_code == 200
+
+
+@pytest.mark.parametrize("url_name", ["cash_register_open", "cash_register_close"])
+def test_bartender_denegado_gestion_caja(client_bartender, url_name):
+    """La gestión de caja (abrir/cerrar) sigue siendo solo cajero/gerente/admin."""
+    assert_access_denied(client_bartender.get(reverse(f"sales:{url_name}")))
+
+
+def test_bartender_pos_checkout_crea_venta(client_bartender, product, open_cash_register):
+    """El bartender puede cobrar en barra: crea la venta y descuenta stock."""
+    stock_inicial = product.stock_current
+    response = client_bartender.post(
+        reverse("sales:pos"),
+        {
+            "product_id": [str(product.id)],
+            "quantity": ["1"],
+            "payment_method": "efectivo",
+            "cash_received": "200.00",
+        },
+    )
+    assert response.status_code == 302
+    sale = Sale.objects.order_by("-pk").first()
+    assert sale is not None and sale.user.username == "bartender_user"
+    product.refresh_from_db()
+    assert product.stock_current == stock_inicial - Decimal("1")
+
+
+def test_bartender_sale_detail_200(client_bartender, product, cajero_user, open_cash_register):
+    """El bartender ve el ticket de sus ventas."""
+    sale = Sale.complete_sale(
+        user=User.objects.get(username="bartender_user"), items=[(product, Decimal("1"))],
+        cash_register=open_cash_register, cash_received=Decimal("200"),
+    )
+    response = client_bartender.get(reverse("sales:sale_detail", args=[sale.id]))
+    assert response.status_code == 200
+
+
+def test_bartender_no_anula_venta_ajena(client_bartender, product, cajero_user, open_cash_register):
+    """F2-06: el bartender no puede anular la venta de otro cajero."""
+    sale = Sale.complete_sale(
+        user=cajero_user, items=[(product, Decimal("1"))],
+        cash_register=open_cash_register, cash_received=Decimal("200"),
+    )
+    response = client_bartender.post(reverse("sales:sale_void", args=[sale.id]),
+                                     {"reason": "error de cobro"})
+    assert response.status_code == 302
+    sale.refresh_from_db()
+    assert sale.status == Sale.Status.COMPLETADA
+
+
+def test_bartender_anula_su_venta_con_motivo(client_bartender, product, open_cash_register):
+    """F2-06: el bartender anula SU propia venta con motivo obligatorio."""
+    sale = Sale.complete_sale(
+        user=User.objects.get(username="bartender_user"), items=[(product, Decimal("1"))],
+        cash_register=open_cash_register, cash_received=Decimal("200"),
+    )
+    response = client_bartender.post(reverse("sales:sale_void", args=[sale.id]),
+                                     {"reason": "pedido equivocado"})
+    assert response.status_code == 302
+    sale.refresh_from_db()
+    assert sale.status == Sale.Status.ANULADA
+
+
+def test_bartender_no_anula_sin_motivo(client_bartender, product, open_cash_register):
+    """F2-06: el motivo es obligatorio incluso para el autor."""
+    sale = Sale.complete_sale(
+        user=User.objects.get(username="bartender_user"), items=[(product, Decimal("1"))],
+        cash_register=open_cash_register, cash_received=Decimal("200"),
+    )
+    response = client_bartender.post(reverse("sales:sale_void", args=[sale.id]), {"reason": ""})
+    assert response.status_code == 302
+    sale.refresh_from_db()
+    assert sale.status == Sale.Status.COMPLETADA
 
 
 def test_pos_anon_redirect(client):

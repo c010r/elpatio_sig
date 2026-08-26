@@ -23,6 +23,9 @@ from .models import CashRegister, HappyHourConfig, Sale, is_happy_hour_active
 audit = logging.getLogger("audit")
 
 SALES_ROLES = ["cajero", "gerente", "admin"]
+# La mayoría de las ventas del pub son en barra: el bartender también puede
+# cobrar en el POS. La gestión de caja (abrir/cerrar) queda en SALES_ROLES.
+BAR_SALES_ROLES = ["bartender", "cajero", "gerente", "admin"]
 
 
 def _happy_hour_context():
@@ -88,9 +91,9 @@ def _parse_cart(post):
 
 
 class PosView(RoleRequiredMixin, View):
-    """POS: grilla de productos + carrito + cobro."""
+    """POS: grilla de productos + carrito + cobro (también para bartender)."""
 
-    roles = SALES_ROLES
+    roles = BAR_SALES_ROLES
 
     def get(self, request):
         context = {
@@ -163,7 +166,7 @@ class SaleListView(RoleRequiredMixin, ListView):
     model = Sale
     template_name = "sales/sale_list.html"
     context_object_name = "sales"
-    roles = SALES_ROLES
+    roles = BAR_SALES_ROLES
 
     def get_queryset(self):
         qs = Sale.objects.select_related("user", "table", "customer").order_by("-created_at")
@@ -182,7 +185,7 @@ class SaleDetailView(RoleRequiredMixin, DetailView):
     model = Sale
     template_name = "sales/sale_detail.html"
     context_object_name = "sale"
-    roles = SALES_ROLES
+    roles = BAR_SALES_ROLES
 
     def get_queryset(self):
         return Sale.objects.select_related(
@@ -194,10 +197,11 @@ class SaleVoidView(RoleRequiredMixin, View):
     """Anula una venta y repone stock (solo POST).
 
     F2-06: solo el autor de la venta o gerente/admin; motivo obligatorio;
-    evento de auditoría.
+    evento de auditoría. Con el bartender habilitado, puede anular SOLO sus
+    propias ventas (el chequeo de autor aplica antes que el de rol).
     """
 
-    roles = SALES_ROLES
+    roles = BAR_SALES_ROLES
 
     def post(self, request, pk):
         sale = get_object_or_404(Sale, pk=pk)
