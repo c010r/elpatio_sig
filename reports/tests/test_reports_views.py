@@ -183,3 +183,38 @@ def test_csv_sin_inyeccion_de_formulas(client_gerente, category, cajero_user, op
         if "SUM(A1:A2)" in linea:
             # la celda debe estar escapada (prefijo ' o espacio)
             assert linea.lstrip().startswith("'"), f"Fórmula no escapada en CSV: {linea}"
+
+
+def test_profit_report_usa_recipe_cost(client_gerente, category, cajero_user, open_cash_register):
+    """El costo de un elaborado en ganancia = recipe_cost (NO purchase_price)."""
+    from decimal import Decimal
+
+    from inventory.models import Product, RecipeItem
+    from sales.models import Sale
+
+    ing1 = Product.objects.create(
+        name="RIng1", category=category, sale_price=Decimal("10"),
+        purchase_price=Decimal("4"), stock_current=Decimal("100"),
+    )
+    ing2 = Product.objects.create(
+        name="RIng2", category=category, sale_price=Decimal("10"),
+        purchase_price=Decimal("6"), stock_current=Decimal("100"),
+    )
+    comp = Product.objects.create(
+        name="RPizza", category=category, sale_price=Decimal("100"),
+        purchase_price=Decimal("999"), stock_current=Decimal("0"), is_composed=True,
+    )
+    RecipeItem.objects.create(product=comp, ingredient=ing1, quantity=Decimal("2"))
+    RecipeItem.objects.create(product=comp, ingredient=ing2, quantity=Decimal("1"))
+    assert comp.recipe_cost == Decimal("14")  # 2×4 + 1×6
+
+    Sale.complete_sale(
+        user=cajero_user, items=[(comp, Decimal("1"))],
+        cash_register=open_cash_register, cash_received=Decimal("200"),
+    )
+    response = client_gerente.get(reverse("reports:profit_report"))
+    assert response.status_code == 200
+    rows = response.context["rows"]
+    row = next(r for r in rows if r["product"] == "RPizza")
+    assert row["cost"] == Decimal("14")
+    assert row["profit"] == Decimal("100") - Decimal("14")

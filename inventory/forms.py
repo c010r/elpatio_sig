@@ -18,7 +18,7 @@ class ProductForm(forms.ModelForm):
         fields = [
             "name", "category", "unit", "purchase_price", "sale_price",
             "stock_current", "stock_min", "barcode", "image",
-            "promo_price", "promo_active", "is_active",
+            "promo_price", "promo_active", "is_composed", "is_active",
         ]
 
     def clean_sale_price(self):
@@ -45,6 +45,15 @@ class ProductForm(forms.ModelForm):
         promo_price = cleaned.get("promo_price")
         if promo_active and promo_price is None:
             self.add_error("promo_price", "Para activar la promo hay que cargar un precio promo.")
+        # Receta: un producto elaborado (is_composed=True) exige al menos un
+        # ingrediente (RecipeItem). La receta se administra por fuera del form.
+        if cleaned.get("is_composed"):
+            has_recipe = bool(self.instance.pk) and self.instance.recipe_items.exists()
+            if not has_recipe:
+                self.add_error(
+                    "is_composed",
+                    "Un producto elaborado necesita al menos un ingrediente de receta.",
+                )
         return cleaned
 
 

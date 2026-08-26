@@ -384,4 +384,66 @@
 
         updateCounts();
     }
+
+    /* ==========================================================================
+       EDITOR DE RECETA (product_form) — productos compuestos
+       Arma ingredient_id[] / quantity[] al submit según las filas del editor.
+       ========================================================================== */
+    var recipeEditor = document.getElementById("recipe-editor");
+    var recipeCheckbox = document.getElementById("id_is_composed");
+    if (recipeEditor && recipeCheckbox) {
+        var recipeRows = document.getElementById("recipe-rows");
+        var recipeTemplate = document.getElementById("recipe-row-template");
+
+        function recipeSync() {
+            recipeEditor.style.display = recipeCheckbox.checked ? "" : "none";
+        }
+        recipeCheckbox.addEventListener("change", recipeSync);
+        recipeSync();
+
+        // Agregar fila (clona la plantilla con todas las opciones)
+        var recipeAddBtn = document.getElementById("recipe-add");
+        if (recipeAddBtn) {
+            recipeAddBtn.addEventListener("click", function () {
+                if (!recipeTemplate) return;
+                var empty = recipeRows.querySelector(".recipe-empty");
+                if (empty) empty.remove();
+                recipeRows.appendChild(recipeTemplate.content.cloneNode(true));
+            });
+        }
+
+        // Quitar fila (delegación)
+        recipeRows.addEventListener("click", function (e) {
+            var btn = e.target.closest(".recipe-remove");
+            if (btn && btn.closest(".recipe-row")) {
+                btn.closest(".recipe-row").remove();
+            }
+        });
+
+        // Submit: inputs ocultos ingredient_id[] / quantity[] (solo filas completas)
+        var recipeForm = recipeCheckbox.closest("form");
+        if (recipeForm) {
+            recipeForm.addEventListener("submit", function () {
+                recipeForm.querySelectorAll('input[name="ingredient_id"], input[name="quantity"]').forEach(function (el) {
+                    el.remove();
+                });
+                if (!recipeCheckbox.checked) return;
+                recipeRows.querySelectorAll(".recipe-row").forEach(function (row) {
+                    var sel = row.querySelector(".recipe-ingredient");
+                    var qty = row.querySelector(".recipe-quantity");
+                    if (!sel || !sel.value) return;
+                    var i1 = document.createElement("input");
+                    i1.type = "hidden";
+                    i1.name = "ingredient_id";
+                    i1.value = sel.value;
+                    var i2 = document.createElement("input");
+                    i2.type = "hidden";
+                    i2.name = "quantity";
+                    i2.value = (qty && qty.value) ? qty.value : "0";
+                    recipeForm.appendChild(i1);
+                    recipeForm.appendChild(i2);
+                });
+            });
+        }
+    }
 })();

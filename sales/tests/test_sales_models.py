@@ -224,3 +224,96 @@ def test_sale_config_save_fuerza_pk_1_y_actualiza():
     assert cfg.pk == 1
     assert SaleConfig.objects.count() == 1
     assert SaleConfig.get_solo().pos_print_ticket is False
+
+
+# ---------------------------------------------------------------------------
+# Productos elaborados (recetas / materia prima) al vender
+# ---------------------------------------------------------------------------
+
+def _crear_elaborado(category, nombre="Elaborado Test", receta=None):
+    """Crea un producto is_composed=True con receta [(ingrediente, cantidad)]."""
+    from inventory.models import Product, RecipeItem
+
+    receta = receta or [("Ing A", Decimal("2")), ("Ing B", Decimal("3"))]
+    ingredients = []
+    for ing_name, qty in receta:
+        ing, _ = Product.objects.get_or_create(
+            name=ing_name,
+            defaults={
+                "category": category, "sale_price": Decimal("10"),
+                "stock_current": Decimal("100"),
+            },
+        )
+        ingredients.append((ing, qty))
+    composed = Product.objects.create(
+        name=nombre, category=category, sale_price=Decimal("50"),
+        stock_current=Decimal("0"), is_composed=True,
+    )
+    for ing, qty in ingredients:
+        RecipeItem.objects.create(product=composed, ingredient=ing, quantity=qty)
+    return composed, ingredients
+
+
+def test_venta_elaborado_descuenta_ingredientes_y_no_toca_terminado(
+        category, cajero_user, open_cash_register):
+    """Al vender un elaborado se descuenta la materia prima (cantidad_receta ×
+    qty) y NO se toca el stock del producto terminado."""
+    from inventory.models import Product
+
+    composed, ingredients = _crear_elaborado(category)
+    stock_term = composed.stock_current
+    stocks = {ing.pk: ing.stock_current for ing, _ in ingredients}
+
+    sale = Sale.complete_sale(
+        user=cajero_user, items=[(composed, Decimal("2"))],
+        cash_register=open_cash_register, cash_received=Decimal("200"),
+    )
+    for ing, qty in ingredients:
+        ing.refresh_from_db()
+        assert ing.stock_current == stocks[ing.pk] - qty * 2
+    composed.refresh_from_db()
+    assert composed.stock_current == stock_term  # 0, no se toca
+    assert sale.items.count() == 1
+    assert sale.items.first().product == composed
+
+
+def test_venta_elaborado_stock_insuficiente_rechaza_y_rollback(
+        category, cajero_user, open_cash_register):
+    """Falta materia prima → ValidationError y no se crea NADA (transaccional)."""
+    from inventory.models import Product, RecipeItem
+
+    ing = Product.objects.create(
+        name="Ing único", category=category, sale_price=Decimal("10"),
+        stock_current=Decimal("1"),
+    )
+    composed = Product.objects.create(
+        name="Elab sin stock", category=category, sale_price=Decimal("50"),
+        stock_current=Decimal("0"), is_composed=True,
+    )
+    RecipeItem.objects.create(product=composed, ingredient=ing, quantity=Decimal("2"))
+
+    with pytest.raises(ValidationError):
+        Sale.complete_sale(
+            user=cajero_user, items=[(composed, Decimal("1"))],
+            cash_register=open_cash_register, cash_received=Decimal("200"),
+        )
+    assert Sale.objects.count() == 0
+    ing.refresh_from_db()
+    assert ing.stock_current == Decimal("1")
+
+
+def test_anular_venta_elaborado_repone_ingredientes(category, cajero_user, open_cash_register):
+    """Anular un elaborado repone la materia prima consumida."""
+    composed, ingredients = _crear_elaborado(category)
+    sale = Sale.complete_sale(
+        user=cajero_user, items=[(composed, Decimal("1"))],
+        cash_register=open_cash_register, cash_received=Decimal("200"),
+    )
+    for ing, _ in ingredients:
+        ing.refresh_from_db()
+    stocks_tras_venta = {ing.pk: ing.stock_current for ing, _ in ingredients}
+    sale.void(cajero_user, reason="error")
+    for ing, _ in ingredients:
+        ing.refresh_from_db()
+        receta = ing.used_in_recipes.get(product=composed)
+        assert ing.stock_current == stocks_tras_venta[ing.pk] + receta.quantity

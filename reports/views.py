@@ -240,47 +240,73 @@ def products_report_csv(request):
 # ---------------------------------------------------------------------------
 # Ganancia bruta por período
 # ---------------------------------------------------------------------------
-@role_required(*REPORT_ROLES)
-def profit_report(request):
-    start, end = _date_range(request)
+def _recipe_costs(product_ids):
+    """Costo de receta por producto elaborado: {product_id: recipe_cost}.
+
+    El costo unitario de un elaborado es la suma de cantidad × precio de
+    compra de sus ingredientes (NO su purchase_price).
+    """
+    from inventory.models import RecipeItem
+
+    costs = {}
+    if product_ids:
+        for ri in RecipeItem.objects.filter(product_id__in=product_ids).select_related("ingredient"):
+            costs[ri.product_id] = costs.get(ri.product_id, Decimal("0")) + ri.quantity * ri.ingredient.purchase_price
+    return costs
+
+
+def _profit_aggregation(start, end):
+    """Agrega la ganancia por producto y por día usando el costo real de cada
+    ítem (recipe_cost para elaborados, purchase_price para simples).
+
+    Devuelve (rows, total_revenue, total_cost, total_profit, chart_labels, chart_data).
+    """
     items = SaleItem.objects.filter(
         sale__status=Sale.Status.COMPLETADA,
         sale__created_at__date__gte=start,
         sale__created_at__date__lte=end,
-    )
-    aggregated = list(
-        items.values("product__name")
-        .annotate(
-            qty=Sum("quantity"),
-            revenue=Sum("subtotal"),
-            cost=Sum(F("quantity") * F("product__purchase_price")),
-            profit=Sum(F("subtotal") - F("quantity") * F("product__purchase_price")),
+    ).select_related("product", "sale")
+    product_ids = {item.product_id for item in items}
+    recipe_costs = _recipe_costs(product_ids)
+
+    per_product = {}
+    per_day = {}
+    for item in items:
+        unit_cost = recipe_costs.get(item.product_id, item.product.purchase_price)
+        cost = item.quantity * unit_cost
+        revenue = item.subtotal
+        profit = revenue - cost
+
+        entry = per_product.setdefault(
+            item.product.name,
+            {"qty": Decimal("0"), "revenue": Decimal("0"), "cost": Decimal("0"), "profit": Decimal("0")},
         )
-        .order_by("-profit")
-    )
+        entry["qty"] += item.quantity
+        entry["revenue"] += revenue
+        entry["cost"] += cost
+        entry["profit"] += profit
+
+        day = item.sale.created_at.date()
+        per_day[day] = per_day.get(day, Decimal("0")) + profit
+
     rows = [
-        {
-            "product": r["product__name"],
-            "quantity": r["qty"],
-            "revenue": r["revenue"],
-            "cost": r["cost"],
-            "profit": r["profit"],
-        }
-        for r in aggregated
+        {"product": name, **values}
+        for name, values in sorted(
+            per_product.items(), key=lambda kv: kv[1]["profit"], reverse=True
+        )
     ]
-    total_revenue = sum(r["revenue"] or 0 for r in rows)
-    total_cost = sum(r["cost"] or 0 for r in rows)
+    total_revenue = sum(r["revenue"] for r in rows)
+    total_cost = sum(r["cost"] for r in rows)
     total_profit = total_revenue - total_cost
+    chart_labels = [day.strftime("%d/%m/%Y") for day in sorted(per_day)]
+    chart_data = [float(per_day[day]) for day in sorted(per_day)]
+    return rows, total_revenue, total_cost, total_profit, chart_labels, chart_data
 
-    # Series para Chart.js: ganancia por día.
-    by_day = (
-        items.values("sale__created_at__date")
-        .annotate(profit=Sum(F("subtotal") - F("quantity") * F("product__purchase_price")))
-        .order_by("sale__created_at__date")
-    )
-    chart_labels = [row["sale__created_at__date"].strftime("%d/%m/%Y") for row in by_day]
-    chart_data = [float(row["profit"] or 0) for row in by_day]
 
+@role_required(*REPORT_ROLES)
+def profit_report(request):
+    start, end = _date_range(request)
+    rows, total_revenue, total_cost, total_profit, chart_labels, chart_data = _profit_aggregation(start, end)
     return render(
         request,
         "reports/profit_report.html",
@@ -300,27 +326,13 @@ def profit_report(request):
 @role_required(*REPORT_ROLES)
 def profit_report_csv(request):
     start, end = _date_range(request)
-    rows = (
-        SaleItem.objects.filter(
-            sale__status=Sale.Status.COMPLETADA,
-            sale__created_at__date__gte=start,
-            sale__created_at__date__lte=end,
-        )
-        .values("product__name")
-        .annotate(
-            qty=Sum("quantity"),
-            revenue=Sum("subtotal"),
-            cost=Sum(F("quantity") * F("product__purchase_price")),
-            profit=Sum(F("subtotal") - F("quantity") * F("product__purchase_price")),
-        )
-        .order_by("-profit")
-    )
+    rows, *_ = _profit_aggregation(start, end)
     response = _csv_response(f"ganancia_{start}_{end}.csv")
     writer = csv.writer(response)
     writer.writerow(["Producto", "Cantidad", "Ingresos", "Costo", "Ganancia bruta"])
     for r in rows:
         writer.writerow(
-            [safe_cell(r["product__name"]), r["qty"], r["revenue"], r["cost"], r["profit"]]
+            [safe_cell(r["product"]), r["qty"], r["revenue"], r["cost"], r["profit"]]
         )
     return response
 

@@ -1,6 +1,8 @@
 """
 inventory — Modelos de categorías, productos y movimientos de stock.
 """
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models, transaction
 
@@ -52,6 +54,10 @@ class Product(models.Model):
         help_text="Precio promocional (se usa si promo activa; no se acumula con happy hour).",
     )
     promo_active = models.BooleanField("promo activa", default=False)
+    is_composed = models.BooleanField(
+        "elaborado (con receta)", default=False,
+        help_text="Si está activo, al vender se descuenta la materia prima (RecipeItem).",
+    )
     is_active = models.BooleanField("activo", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -75,6 +81,45 @@ class Product(models.Model):
     def is_low_stock(self):
         """True si el stock actual está por debajo o igual al mínimo."""
         return self.stock_current <= self.stock_min
+
+    @property
+    def recipe_cost(self):
+        """Costo de la receta por 1 unidad: suma de cantidad × precio de compra
+        de cada ingrediente. 0 si no tiene receta."""
+        total = Decimal("0")
+        for item in self.recipe_items.select_related("ingredient"):
+            total += item.quantity * item.ingredient.purchase_price
+        return total
+
+
+class RecipeItem(models.Model):
+    """Ingrediente de la receta de un producto elaborado (is_composed=True).
+
+    `product` es el producto terminado; `ingredient` la materia prima. La
+    `quantity` es la cantidad de ingrediente necesaria por 1 unidad del
+    producto terminado.
+    """
+
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE,
+        related_name="recipe_items", verbose_name="producto elaborado",
+    )
+    ingredient = models.ForeignKey(
+        Product, on_delete=models.PROTECT,
+        related_name="used_in_recipes", verbose_name="ingrediente",
+    )
+    quantity = models.DecimalField(
+        "cantidad por unidad", max_digits=10, decimal_places=2,
+        help_text="Cantidad de ingrediente necesaria por 1 unidad del producto.",
+    )
+
+    class Meta:
+        verbose_name = "ingrediente de receta"
+        verbose_name_plural = "ingredientes de receta"
+        unique_together = ("product", "ingredient")
+
+    def __str__(self):
+        return f"{self.quantity} de {self.ingredient.name} para {self.product.name}"
 
 
 class StockMovement(models.Model):

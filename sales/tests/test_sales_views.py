@@ -367,3 +367,34 @@ def test_sale_config_post_actualiza_preferencia(client_gerente):
     response = client_gerente.post(reverse("sales:sale_config"), {})
     assert response.status_code == 302
     assert SaleConfig.get_solo().pos_print_ticket is False
+
+
+# ---------------------------------------------------------------------------
+# Productos elaborados (recetas) en el POS
+# ---------------------------------------------------------------------------
+
+def test_pos_context_servings_para_elaborados(client_cajero, category):
+    """El POS expone is_composed y servings (porciones según el ingrediente
+    más limitante) para los productos elaborados."""
+    from inventory.models import Product, RecipeItem
+
+    ing1 = Product.objects.create(
+        name="Ing Pos 1", category=category, sale_price=Decimal("10"),
+        stock_current=Decimal("10"),
+    )
+    ing2 = Product.objects.create(
+        name="Ing Pos 2", category=category, sale_price=Decimal("10"),
+        stock_current=Decimal("3"),
+    )
+    comp = Product.objects.create(
+        name="Elab Pos", category=category, sale_price=Decimal("50"), is_composed=True,
+    )
+    RecipeItem.objects.create(product=comp, ingredient=ing1, quantity=Decimal("2"))  # 10//2 = 5
+    RecipeItem.objects.create(product=comp, ingredient=ing2, quantity=Decimal("1"))  # 3//1 = 3
+
+    response = client_cajero.get(reverse("sales:pos"))
+    assert response.status_code == 200
+    servings = response.context["servings"]
+    assert servings[comp.pk] == 3  # min(5, 3)
+    comp_obj = next(p for p in response.context["products"] if p.pk == comp.pk)
+    assert comp_obj.is_composed is True

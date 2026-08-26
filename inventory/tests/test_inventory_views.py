@@ -18,6 +18,8 @@ except (ImportError, NoReverseMatch):
 
 from conftest import assert_access_denied  # noqa: E402
 
+from decimal import Decimal  # noqa: E402
+
 pytestmark = pytest.mark.django_db
 
 
@@ -112,3 +114,34 @@ def test_stock_movement_create_gerente_genera_movimiento(client_gerente, product
     assert response.status_code == 302
     product.refresh_from_db()
     assert product.stock_current == stock_inicial + 5
+
+
+# ---------------------------------------------------------------------------
+# Productos elaborados (recetas)
+# ---------------------------------------------------------------------------
+
+def test_stock_low_excluye_elaborados(client_gerente, category):
+    """Los productos is_composed no figuran en stock bajo: su stock es la
+    materia prima, controlada por los ingredientes."""
+    Product.objects.create(
+        name="Elab bajo", category=category, sale_price=Decimal("50"),
+        stock_current=Decimal("1"), stock_min=Decimal("5"), is_composed=True,
+    )
+    response = client_gerente.get(reverse("inventory:stock_low"))
+    assert response.status_code == 200
+    names = [p.name for p in response.context["low_products"]]
+    assert "Elab bajo" not in names
+
+
+def test_product_form_rechaza_elaborado_sin_receta(category):
+    """is_composed=True sin ningún RecipeItem → error de formulario."""
+    from inventory.forms import ProductForm
+
+    form = ProductForm(
+        data={
+            "name": "Elab sin receta", "category": category.id, "unit": "unidad",
+            "sale_price": "50", "is_composed": True,
+        }
+    )
+    assert not form.is_valid()
+    assert "is_composed" in form.errors

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load django_bootstrap5 %}
+{% load l10n %}
 {% block title %}{% if object %}Editar producto{% else %}Nuevo producto{% endif %} — El Patio SIG{% endblock %}
 
 {% block breadcrumbs %}
@@ -32,6 +33,58 @@
                 <form method="post" enctype="multipart/form-data" novalidate>
                     {% csrf_token %}
                     {% bootstrap_form form %}
+
+                    {# --- Editor de receta (productos compuestos) --- #}
+                    {% if ingredient_products %}
+                    <div id="recipe-editor" class="recipe-editor" style="display:none;">
+                        <hr>
+                        <h6 class="fw-bold">🧪 Ingredientes de la receta</h6>
+                        <p class="small text-muted">
+                            Definí qué productos / materia prima componen este producto. La disponibilidad en el POS
+                            se calcula según estos ingredientes, y el costo de receta se deriva de ellos.
+                        </p>
+                        <div id="recipe-rows" class="mb-2">
+                            {% for ri in form.instance.recipe_items.all %}
+                            <div class="recipe-row row g-2 mb-2 align-items-center">
+                                <div class="col-7 col-md-8">
+                                    <select class="form-select form-select-sm recipe-ingredient">
+                                        <option value="">— Seleccionar ingrediente —</option>
+                                        {% for p in ingredient_products %}<option value="{{ p.pk }}" {% if ri.ingredient_id == p.pk %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-4 col-md-3">
+                                    <input type="number" step="0.01" min="0" class="form-control form-control-sm recipe-quantity" placeholder="Cantidad" value="{{ ri.quantity|unlocalize }}">
+                                </div>
+                                <div class="col-1">
+                                    <button type="button" class="btn btn-outline-danger btn-sm recipe-remove" aria-label="Quitar ingrediente"><i class="bi bi-x-lg"></i></button>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="text-muted small recipe-empty">Sin ingredientes cargados. Agregá los primeros abajo.</div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="recipe-add"><i class="bi bi-plus-lg me-1"></i>Agregar ingrediente</button>
+
+                        {# Plantilla para filas nuevas (la clona el JS) #}
+                        <template id="recipe-row-template">
+                            <div class="recipe-row row g-2 mb-2 align-items-center">
+                                <div class="col-7 col-md-8">
+                                    <select class="form-select form-select-sm recipe-ingredient">
+                                        <option value="">— Seleccionar ingrediente —</option>
+                                        {% for p in ingredient_products %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-4 col-md-3">
+                                    <input type="number" step="0.01" min="0" class="form-control form-control-sm recipe-quantity" placeholder="Cantidad">
+                                </div>
+                                <div class="col-1">
+                                    <button type="button" class="btn btn-outline-danger btn-sm recipe-remove" aria-label="Quitar ingrediente"><i class="bi bi-x-lg"></i></button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    {% endif %}
+
                     <div class="d-flex gap-2 mt-3">
                         <button type="submit" class="btn btn-primary">💾 Guardar</button>
                         <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-secondary">Cancelar</a>

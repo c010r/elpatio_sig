@@ -332,6 +332,37 @@ class Sale(models.Model):
         if tip < 0:
             raise ValidationError("La propina no puede ser negativa.")
 
+        from inventory.models import StockMovement
+
+        # PASA 1: validar stock de TODOS los ítems ANTES de crear cualquier cosa.
+        # - Producto simple: su propio stock.
+        # - Producto elaborado (is_composed): stock de CADA ingrediente de la
+        #   receta (producto.stock_current no se toca; es la materia prima la
+        #   que se consume).
+        for product, quantity in items:
+            if quantity <= 0:
+                raise ValidationError("Las cantidades deben ser mayores a cero.")
+            if product.is_composed:
+                recipe_items = list(product.recipe_items.select_related("ingredient"))
+                if not recipe_items:
+                    raise ValidationError(
+                        f"El producto {product.name} está marcado como elaborado "
+                        "pero no tiene receta."
+                    )
+                for ri in recipe_items:
+                    needed = ri.quantity * quantity
+                    if ri.ingredient.stock_current < needed:
+                        raise ValidationError(
+                            f"Stock insuficiente de {ri.ingredient.name} para {product.name} "
+                            f"(disponible {ri.ingredient.stock_current}, requerido {needed})."
+                        )
+            else:
+                if product.stock_current < quantity:
+                    raise ValueError(
+                        f"Stock insuficiente para {product.name}: "
+                        f"disponible {product.stock_current}, requerido {quantity}."
+                    )
+
         # Ticket único con reintento ante colisiones por concurrencia.
         sale = None
         for _ in range(10):
@@ -351,10 +382,9 @@ class Sale(models.Model):
         if sale is None:
             raise ValidationError("No se pudo generar un número de ticket único.")
 
+        # PASA 2: crear ítems y descontar stock (la validación ya pasó).
         subtotal = Decimal("0")
         for product, quantity in items:
-            if quantity <= 0:
-                raise ValidationError("Las cantidades deben ser mayores a cero.")
             # Precio congelado al momento de la venta (promo / happy hour / regular).
             unit_price = effective_price(product)
             line_subtotal = unit_price * quantity
@@ -366,16 +396,24 @@ class Sale(models.Model):
                 unit_price=unit_price,
                 subtotal=line_subtotal,
             )
-            # Descuento de stock por venta (cantidad negativa).
-            from inventory.models import StockMovement
-
-            StockMovement.objects.create(
-                product=product,
-                quantity=-quantity,
-                movement_type=StockMovement.MovementType.VENTA,
-                reference=f"Venta {sale.ticket_number}",
-                user=user,
-            ).apply()
+            if product.is_composed:
+                # Se consume materia prima (RecipeItem), NO el stock del terminado.
+                for ri in product.recipe_items.select_related("ingredient"):
+                    StockMovement.objects.create(
+                        product=ri.ingredient,
+                        quantity=-(ri.quantity * quantity),
+                        movement_type=StockMovement.MovementType.VENTA,
+                        reference=f"Venta {sale.ticket_number}",
+                        user=user,
+                    ).apply()
+            else:
+                StockMovement.objects.create(
+                    product=product,
+                    quantity=-quantity,
+                    movement_type=StockMovement.MovementType.VENTA,
+                    reference=f"Venta {sale.ticket_number}",
+                    user=user,
+                ).apply()
 
         sale.subtotal = subtotal
         sale.discount = discount
@@ -414,20 +452,34 @@ class Sale(models.Model):
 
     @transaction.atomic
     def void(self, user, reason=""):
-        """Anula la venta y repone el stock de todos sus ítems."""
+        """Anula la venta y repone el stock de todos sus ítems.
+
+        Para productos elaborados repone la MATERIA PRIMA (ingredientes de la
+        receta); para productos simples repone el stock del propio producto.
+        """
         if self.status != self.Status.COMPLETADA:
             raise ValidationError("Solo se pueden anular ventas completadas.")
 
         from inventory.models import StockMovement
 
         for item in self.items.select_related("product"):
-            StockMovement.objects.create(
-                product=item.product,
-                quantity=item.quantity,
-                movement_type=StockMovement.MovementType.VENTA,
-                reference=f"Anulación {self.ticket_number}",
-                user=user,
-            ).apply()
+            if item.product.is_composed:
+                for ri in item.product.recipe_items.select_related("ingredient"):
+                    StockMovement.objects.create(
+                        product=ri.ingredient,
+                        quantity=ri.quantity * item.quantity,
+                        movement_type=StockMovement.MovementType.VENTA,
+                        reference=f"Anulación {self.ticket_number}",
+                        user=user,
+                    ).apply()
+            else:
+                StockMovement.objects.create(
+                    product=item.product,
+                    quantity=item.quantity,
+                    movement_type=StockMovement.MovementType.VENTA,
+                    reference=f"Anulación {self.ticket_number}",
+                    user=user,
+                ).apply()
         self.status = self.Status.ANULADA
         self.voided_by = user
         self.voided_at = timezone.now()

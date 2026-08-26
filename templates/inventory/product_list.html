@@ -44,7 +44,15 @@
                                 {% else %}
                                 <span class="product-thumb product-thumb-placeholder"><i class="bi bi-cup-straw"></i></span>
                                 {% endif %}
-                                <span class="fw-semibold">{{ product.name }}</span>
+                                <div>
+                                    <div class="fw-semibold">
+                                        {{ product.name }}
+                                        {% if product.is_composed %}<span class="badge bg-info ms-1">🧪 Elaborado</span>{% endif %}
+                                    </div>
+                                    {% if product.is_composed and product.recipe_cost %}
+                                    <div class="small text-muted">Costo receta: {{ product.recipe_cost|money }}</div>
+                                    {% endif %}
+                                </div>
                             </div>
                         </td>
                         <td>{{ product.category.name|default:"—" }}</td>

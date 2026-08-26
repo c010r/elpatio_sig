@@ -41,10 +41,13 @@
 
         <div class="row g-2 pos-grid" id="pos-grid">
             {% for product in products %}
+            {% with serv_map=product_servings|default:None %}
             <div class="col-6 col-md-4 col-xl-3">
                 <div role="button" tabindex="0"
                         class="card pos-product-card h-100 w-100 text-start border-0
-                               {% if product.stock_current <= 0 %}disabled{% endif %}"
+                               {% if product.is_composed and serv_map %}
+                               {% for pid, servings in serv_map.items %}{% if pid == product.pk and servings < 1 %}disabled{% endif %}{% endfor %}
+                               {% elif product.stock_current <= 0 %}disabled{% endif %}"
                         data-product-id="{{ product.pk }}"
                         data-product-name="{{ product.name }}"
                         {% if product.promo_active and product.promo_price %}
@@ -54,8 +57,14 @@
                         data-product-price="{{ product.sale_price|unlocalize }}"
                         data-product-price-display="{{ product.sale_price|money }}"
                         {% endif %}
+                        {% if product.is_composed and serv_map %}
+                        {% for pid, servings in serv_map.items %}{% if pid == product.pk %}data-product-stock="{{ servings|unlocalize }}"{% endif %}{% endfor %}
+                        {% else %}
                         data-product-stock="{{ product.stock_current|unlocalize }}"
-                        {% if product.stock_current <= 0 %}aria-disabled="true"{% endif %}>
+                        {% endif %}
+                        {% if product.is_composed and serv_map %}
+                        {% for pid, servings in serv_map.items %}{% if pid == product.pk and servings < 1 %}aria-disabled="true"{% endif %}{% endfor %}
+                        {% elif product.stock_current <= 0 %}aria-disabled="true"{% endif %}>
                     <div class="pos-product-img">
                         {% if product.image %}
                         <img src="{{ product.image.url }}" alt="{{ product.name }}">
@@ -78,6 +87,19 @@
                                 {% if product.promo_active and product.promo_price %}
                                 <span class="badge bg-danger pos-promo-badge">🔥 PROMO</span>
                                 {% endif %}
+                                {% if product.is_composed and serv_map %}
+                                {% for pid, servings in serv_map.items %}{% if pid == product.pk %}
+                                <span class="badge bg-info">🧪 Elaborado</span>
+                                {% if servings < 1 %}
+                                <span class="badge bg-secondary">Sin stock de materia prima</span>
+                                {% elif servings <= 3 %}
+                                <span class="badge bg-danger">{{ servings|floatformat:0 }} porciones</span>
+                                {% else %}
+                                <span class="badge bg-success">{{ servings|floatformat:0 }} porciones</span>
+                                {% endif %}
+                                {% endif %}{% endfor %}
+                                {% else %}
+                                {% if product.is_composed %}<span class="badge bg-info">🧪 Elaborado</span>{% endif %}
                                 {% if product.stock_current <= 0 %}
                                 <span class="badge bg-secondary">Sin stock</span>
                                 {% elif product.stock_current <= product.stock_min %}
@@ -85,11 +107,13 @@
                                 {% else %}
                                 <span class="badge bg-success">{{ product.stock_current|floatformat:0 }} {{ product.unit }}</span>
                                 {% endif %}
+                                {% endif %}
                             </span>
                         </div>
                     </div>
                 </div>
             </div>
+            {% endwith %}
             {% empty %}
             <div class="col-12 text-center text-muted py-5">
                 No hay productos activos para vender.

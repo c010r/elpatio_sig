@@ -162,8 +162,12 @@ class StockLowView(RoleRequiredMixin, ListView):
     roles = ["gerente", "admin", "bartender", "cajero"]
 
     def get_queryset(self):
+        # Excluye elaborados (is_composed): su stock es la materia prima,
+        # controlada por los ingredientes de la receta.
         return (
-            Product.objects.filter(is_active=True, stock_current__lte=F("stock_min"))
+            Product.objects.filter(
+                is_active=True, is_composed=False, stock_current__lte=F("stock_min")
+            )
             .select_related("category")
             .order_by(F("stock_current") - F("stock_min"))
         )

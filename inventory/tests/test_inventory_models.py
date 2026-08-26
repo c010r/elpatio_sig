@@ -135,3 +135,43 @@ def test_is_active_default_true(category):
 def test_unidades_permitidas(category):
     p = Product.objects.create(name="Jarra", category=category, unit="jarra", sale_price=Decimal("80"))
     assert p.get_unit_display() == "jarra"
+
+
+# ---------------------------------------------------------------------------
+# Recetas (RecipeItem) / productos elaborados
+# ---------------------------------------------------------------------------
+
+def test_recipe_cost_suma_ingredientes(category):
+    """recipe_cost = suma(cantidad × precio_compra) de los ingredientes."""
+    from inventory.models import RecipeItem
+
+    ing1 = Product.objects.create(
+        name="ICosto1", category=category, sale_price=Decimal("10"),
+        purchase_price=Decimal("4"), stock_current=Decimal("10"),
+    )
+    ing2 = Product.objects.create(
+        name="ICosto2", category=category, sale_price=Decimal("10"),
+        purchase_price=Decimal("6"), stock_current=Decimal("10"),
+    )
+    comp = Product.objects.create(
+        name="CCosto", category=category, sale_price=Decimal("50"), is_composed=True,
+    )
+    RecipeItem.objects.create(product=comp, ingredient=ing1, quantity=Decimal("2"))
+    RecipeItem.objects.create(product=comp, ingredient=ing2, quantity=Decimal("1"))
+    assert comp.recipe_items.count() == 2
+    assert comp.recipe_cost == Decimal("14")  # 2×4 + 1×6
+
+
+def test_recipe_item_unique_por_producto_ingrediente(category):
+    """No se puede repetir el mismo ingrediente en la misma receta."""
+    from inventory.models import RecipeItem
+
+    ing = Product.objects.create(
+        name="IUnique", category=category, sale_price=Decimal("10"), stock_current=Decimal("10"),
+    )
+    comp = Product.objects.create(
+        name="CUnique", category=category, sale_price=Decimal("50"), is_composed=True,
+    )
+    RecipeItem.objects.create(product=comp, ingredient=ing, quantity=Decimal("1"))
+    with pytest.raises(IntegrityError):
+        RecipeItem.objects.create(product=comp, ingredient=ing, quantity=Decimal("2"))

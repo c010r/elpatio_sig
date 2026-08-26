@@ -14,7 +14,7 @@ from django.contrib.auth.models import Group, User
 from django.core.management.base import BaseCommand
 
 from customers.models import Customer, LoyaltyConfig
-from inventory.models import Category, Product
+from inventory.models import Category, Product, RecipeItem
 from purchases.models import Supplier
 from sales.models import HappyHourConfig, SaleConfig
 from tables.models import Table
@@ -110,6 +110,78 @@ class Command(BaseCommand):
                 },
             )
             self.stdout.write(f"  - {product.name} ({product.sale_price} UYU)")
+
+        self.stdout.write(self.style.MIGRATE_HEADING("Creando ingredientes de receta..."))
+        INGREDIENTS = [
+            # (nombre, categoría, unidad, precio compra UYU, precio venta UYU, stock, stock mínimo)
+            ("Masa de pizza", "Snacks", "unidad", "40.00", "60.00", "30", "5"),
+            ("Salsa de tomate", "Snacks", "unidad", "25.00", "40.00", "40", "10"),
+            ("Muzzarella", "Snacks", "kg", "180.00", "300.00", "10", "2"),
+        ]
+        for name, cat, unit, purchase, sale, stock, stock_min in INGREDIENTS:
+            ingredient, _ = Product.objects.get_or_create(
+                name=name,
+                defaults={
+                    "category": categories[cat],
+                    "unit": unit,
+                    "purchase_price": Decimal(purchase),
+                    "sale_price": Decimal(sale),
+                    "stock_current": Decimal(stock),
+                    "stock_min": Decimal(stock_min),
+                },
+            )
+            self.stdout.write(f"  - ingrediente {ingredient.name}")
+
+        self.stdout.write(self.style.MIGRATE_HEADING("Creando productos elaborados (con receta)..."))
+        COMPOSED = [
+            # (nombre, categoría, unidad, precio venta UYU)
+            ("Fernet con coca", "Espirituosas", "unidad", "350.00"),
+            ("Pizza muzarella", "Snacks", "unidad", "450.00"),
+        ]
+        composed_by_name = {}
+        for name, cat, unit, sale in COMPOSED:
+            composed, _ = Product.objects.get_or_create(
+                name=name,
+                defaults={
+                    "category": categories[cat],
+                    "unit": unit,
+                    "purchase_price": Decimal("0"),
+                    "sale_price": Decimal(sale),
+                    "stock_current": Decimal("0"),
+                    "stock_min": Decimal("0"),
+                    "is_composed": True,
+                },
+            )
+            # Si ya existía sin is_composed, lo marcamos (idempotente).
+            if not composed.is_composed:
+                composed.is_composed = True
+                composed.save(update_fields=["is_composed"])
+            composed_by_name[name] = composed
+            self.stdout.write(f"  - {composed.name} ({composed.sale_price} UYU)")
+
+        RECIPES = {
+            # producto elaborado -> [(ingrediente, cantidad por unidad)]
+            "Fernet con coca": [
+                ("Fernet", Decimal("0.08")),       # ~60 ml de botella
+                ("Gaseosa cola 500ml", Decimal("0.3")),  # ~150 ml de 500 ml
+            ],
+            "Pizza muzarella": [
+                ("Masa de pizza", Decimal("1")),
+                ("Salsa de tomate", Decimal("1")),
+                ("Muzzarella", Decimal("0.15")),   # ~150 g
+            ],
+        }
+        for product_name, ingredients in RECIPES.items():
+            composed = composed_by_name[product_name]
+            for ingredient_name, quantity in ingredients:
+                ingredient = Product.objects.get(name=ingredient_name)
+                RecipeItem.objects.get_or_create(
+                    product=composed, ingredient=ingredient, defaults={"quantity": quantity}
+                )
+            self.stdout.write(
+                f"  - receta {composed.name}: "
+                + ", ".join(f"{q} de {i}" for i, q in ingredients)
+            )
 
         self.stdout.write(self.style.MIGRATE_HEADING("Creando mesas..."))
         for number, capacity, zone in TABLES:

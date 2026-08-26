@@ -99,17 +99,30 @@ class PosView(RoleRequiredMixin, View):
     roles = BAR_SALES_ROLES
 
     def get(self, request):
+        products = list(
+            Product.objects.filter(is_active=True)
+            .select_related("category")
+            .prefetch_related("recipe_items__ingredient")
+            .order_by("category__name", "name")
+        )
+        # Disponibilidad de productos elaborados: porciones posibles según el
+        # ingrediente más limitante (min de stock_ingrediente // cantidad_receta).
+        servings = {}
+        for product in products:
+            if product.is_composed:
+                portions = [
+                    ri.ingredient.stock_current // ri.quantity
+                    for ri in product.recipe_items.all()
+                ]
+                servings[product.pk] = min(portions) if portions else 0
         context = {
-            "products": (
-                Product.objects.filter(is_active=True)
-                .select_related("category")
-                .order_by("category__name", "name")
-            ),
+            "products": products,
             "customers": Customer.objects.filter(is_active=True).order_by("name"),
             "form": SaleForm(),
             "open_cash_register": CashRegister.get_open(),
             "happy_hour": _happy_hour_context(),
             "pos_print_ticket": SaleConfig.get_solo().pos_print_ticket,
+            "servings": servings,
         }
         return render(request, "sales/pos.html", context)
 
