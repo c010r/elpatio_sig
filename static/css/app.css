@@ -1086,8 +1086,35 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 [data-theme="dark"] .form-check-input { background-color: #0f172a; }
 [data-theme="dark"] select option { background-color: #1e293b; color: var(--ep-ink); }
 
-[data-theme="dark"] .table { color: var(--ep-ink); }
+/* Tablas en dark: Bootstrap pinta las celdas con --bs-table-color (negro por
+   defecto) — hay que pisar la VARIABLE, no solo `color:`, o el texto queda
+   negro sobre fondo oscuro. */
+[data-theme="dark"] .table {
+    --bs-table-color: var(--ep-ink);
+    --bs-table-striped-color: var(--ep-ink);
+    --bs-table-hover-color: var(--ep-ink);
+    --bs-table-active-color: var(--ep-ink);
+    color: var(--ep-ink);
+}
 [data-theme="dark"] .table thead th { background: var(--ep-surface-2); color: var(--ep-ink-soft); }
+
+/* Filas de totales (.table-light de Bootstrap) en dark: nada de fondo claro */
+[data-theme="dark"] .table-light,
+[data-theme="dark"] tr.table-light {
+    --bs-table-bg: var(--ep-surface-2);
+    --bs-table-color: var(--ep-ink);
+    --bs-table-striped-bg: var(--ep-surface-2);
+    background-color: var(--ep-surface-2) !important;
+    color: var(--ep-ink) !important;
+}
+
+/* Badges pastel (bg-warning/bg-info/...) en dark: fondo translúcido + texto
+   claro. !important para ganarle al text-dark que usan los templates. */
+[data-theme="dark"] .badge.bg-warning { background: rgba(251, 191, 36, .14) !important; color: #fcd34d !important; }
+[data-theme="dark"] .badge.bg-info    { background: rgba(56, 189, 248, .14) !important; color: #7dd3fc !important; }
+[data-theme="dark"] .badge.bg-success { background: rgba(16, 185, 129, .14) !important; color: #6ee7b7 !important; }
+[data-theme="dark"] .badge.bg-danger  { background: rgba(251, 113, 133, .14) !important; color: #fda4af !important; }
+[data-theme="dark"] .badge.bg-secondary { background: rgba(148, 163, 184, .16) !important; color: #cbd5e1 !important; }
 
 [data-theme="dark"] .dropdown-menu {
     background-color: var(--ep-surface);
