@@ -1,0 +1,210 @@
+{% load django_bootstrap5 %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}El Patio SIG{% endblock %}</title>
+    {% bootstrap_css %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="app-body {% if user.is_authenticated %}app-auth{% endif %}">
+
+{# ======================= SIDEBAR (solo autenticados) ======================= #}
+{% if user.is_authenticated %}
+    {# group_names: nombres de grupo del usuario (ej: "admin,gerente") para chequear rol sin tags custom. #}
+    {% with group_names=user.groups.all|join:"," active=request.resolver_match.url_name %}
+    <div class="sidebar-backdrop" data-sidebar-close></div>
+    <aside class="app-sidebar" id="appSidebar">
+        <div class="sidebar-brand">
+            <a href="{% url 'core:dashboard' %}" class="brand-link">
+                <span class="brand-logo">🍺</span>
+                <span class="brand-text">El Patio <small>SIG</small></span>
+            </a>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="{% url 'core:dashboard' %}" class="nav-link {% if active == 'dashboard' %}active{% endif %}">
+                <span class="nav-icon">📊</span><span>Dashboard</span>
+            </a>
+
+            {# --- OPERACIÓN: mesas y reservas (bartender, gerente, admin) --- #}
+            {% if 'bartender' in group_names or 'gerente' in group_names or 'admin' in group_names or user.is_superuser %}
+            <div class="sidebar-section">Operación</div>
+            <a href="{% url 'tables:table_map' %}" class="nav-link {% if active == 'table_map' or active == 'order_detail' or active == 'order_form' %}active{% endif %}">
+                <span class="nav-icon">🍻</span><span>Mesas</span>
+            </a>
+            <a href="{% url 'reservations:reservation_today' %}" class="nav-link {% if active == 'reservation_today' or active == 'reservation_list' or active == 'reservation_form' %}active{% endif %}">
+                <span class="nav-icon">📅</span><span>Reservas de hoy</span>
+            </a>
+            {% endif %}
+
+            {# --- VENTAS: POS, listado, caja y clientes (cajero, gerente, admin) --- #}
+            {% if 'cajero' in group_names or 'gerente' in group_names or 'admin' in group_names or user.is_superuser %}
+            <div class="sidebar-section">Ventas</div>
+            <a href="{% url 'sales:pos' %}" class="nav-link {% if active == 'pos' %}active{% endif %}">
+                <span class="nav-icon">🛒</span><span>Punto de venta</span>
+            </a>
+            <a href="{% url 'sales:sale_list' %}" class="nav-link {% if active == 'sale_list' or active == 'sale_detail' %}active{% endif %}">
+                <span class="nav-icon">🧾</span><span>Ventas</span>
+            </a>
+            {% if open_cash_register %}
+            <a href="{% url 'sales:cash_register_close' %}" class="nav-link {% if active == 'cash_register_close' %}active{% endif %}">
+                <span class="nav-icon">🔒</span><span>Cerrar caja</span>
+            </a>
+            {% else %}
+            <a href="{% url 'sales:cash_register_open' %}" class="nav-link {% if active == 'cash_register_open' %}active{% endif %}">
+                <span class="nav-icon">🔓</span><span>Abrir caja</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'customers:customer_list' %}" class="nav-link {% if active == 'customer_list' or active == 'customer_detail' or active == 'customer_form' %}active{% endif %}">
+                <span class="nav-icon">👥</span><span>Clientes</span>
+            </a>
+            {% endif %}
+
+            {# --- GESTIÓN: inventario, compras, empleados y reportes (gerente, admin) --- #}
+            {% if 'gerente' in group_names or 'admin' in group_names or user.is_superuser %}
+            <div class="sidebar-section">Gestión</div>
+            <a href="{% url 'inventory:product_list' %}" class="nav-link {% if active == 'product_list' or active == 'product_form' %}active{% endif %}">
+                <span class="nav-icon">📦</span><span>Productos</span>
+            </a>
+            <a href="{% url 'inventory:category_list' %}" class="nav-link {% if active == 'category_list' or active == 'category_form' %}active{% endif %}">
+                <span class="nav-icon">🏷️</span><span>Categorías</span>
+            </a>
+            <a href="{% url 'inventory:stock_movement_list' %}" class="nav-link {% if active == 'stock_movement_list' or active == 'stock_movement_form' %}active{% endif %}">
+                <span class="nav-icon">🔄</span><span>Movimientos de stock</span>
+            </a>
+            <a href="{% url 'inventory:stock_low' %}" class="nav-link {% if active == 'stock_low' %}active{% endif %}">
+                <span class="nav-icon">⚠️</span><span>Stock bajo</span>
+                {% if low_stock_count %}<span class="badge bg-warning text-dark ms-auto">{{ low_stock_count }}</span>{% endif %}
+            </a>
+            <a href="{% url 'purchases:purchase_list' %}" class="nav-link {% if active == 'purchase_list' or active == 'purchase_detail' or active == 'purchase_form' or active == 'purchase_receive' %}active{% endif %}">
+                <span class="nav-icon">🛍️</span><span>Órdenes de compra</span>
+            </a>
+            <a href="{% url 'purchases:supplier_list' %}" class="nav-link {% if active == 'supplier_list' or active == 'supplier_form' %}active{% endif %}">
+                <span class="nav-icon">🚚</span><span>Proveedores</span>
+            </a>
+            <a href="{% url 'staff:employee_list' %}" class="nav-link {% if active == 'employee_list' or active == 'employee_form' %}active{% endif %}">
+                <span class="nav-icon">👷</span><span>Empleados</span>
+            </a>
+            <a href="{% url 'staff:shift_list' %}" class="nav-link {% if active == 'shift_list' or active == 'shift_form' %}active{% endif %}">
+                <span class="nav-icon">🕐</span><span>Turnos</span>
+            </a>
+            <a href="{% url 'staff:my_shift' %}" class="nav-link {% if active == 'my_shift' %}active{% endif %}">
+                <span class="nav-icon">🏁</span><span>Mi turno</span>
+            </a>
+            <div class="sidebar-section">Reportes</div>
+            <a href="{% url 'reports:sales_report' %}" class="nav-link {% if active == 'sales_report' %}active{% endif %}">
+                <span class="nav-icon">💵</span><span>Ventas por período</span>
+            </a>
+            <a href="{% url 'reports:products_report' %}" class="nav-link {% if active == 'products_report' %}active{% endif %}">
+                <span class="nav-icon">🏆</span><span>Productos más vendidos</span>
+            </a>
+            <a href="{% url 'reports:profit_report' %}" class="nav-link {% if active == 'profit_report' %}active{% endif %}">
+                <span class="nav-icon">📈</span><span>Ganancia bruta</span>
+            </a>
+            <a href="{% url 'reports:inventory_value_report' %}" class="nav-link {% if active == 'inventory_value_report' %}active{% endif %}">
+                <span class="nav-icon">🏦</span><span>Valor del inventario</span>
+            </a>
+            {% endif %}
+
+            {# --- ADMINISTRACIÓN: usuarios (solo admin) --- #}
+            {% if 'admin' in group_names or user.is_superuser %}
+            <div class="sidebar-section">Administración</div>
+            <a href="{% url 'accounts:user_list' %}" class="nav-link {% if active == 'user_list' or active == 'user_form' %}active{% endif %}">
+                <span class="nav-icon">🔐</span><span>Usuarios</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="text-muted small">🍺 El Patio SIG</div>
+        </div>
+    </aside>
+    {% endwith %}
+{% endif %}
+
+{# ======================= CONTENIDO (bloque único) ======================= #}
+<div class="app-main">
+    {% if user.is_authenticated %}
+    {% with group_names=user.groups.all|join:"," active=request.resolver_match.url_name %}
+    <header class="app-topbar">
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm d-lg-none" type="button" data-sidebar-toggle aria-label="Abrir menú">☰</button>
+            <div class="topbar-title">
+                {% block breadcrumbs %}{% endblock %}
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge date-pill"><span class="me-1">📅</span>{{ today|date:"l d/m/Y" }}</span>
+
+            {# Indicador de caja abierta/cerrada (color) #}
+            {% if 'cajero' in group_names or 'gerente' in group_names or 'admin' in group_names or user.is_superuser %}
+                {% if open_cash_register %}
+                <a class="badge-link" href="{% url 'sales:cash_register_close' %}" title="Cerrar caja">
+                    <span class="badge cash-badge-open">💰 Caja abierta · desde {{ open_cash_register.opened_at|time:"H:i" }}</span>
+                </a>
+                {% else %}
+                <a class="badge-link" href="{% url 'sales:cash_register_open' %}" title="Abrir caja">
+                    <span class="badge cash-badge-closed">💰 Caja cerrada</span>
+                </a>
+                {% endif %}
+            {% endif %}
+
+            {# Badge de stock bajo #}
+            {% if low_stock_count %}
+                {% if 'gerente' in group_names or 'admin' in group_names or user.is_superuser %}
+                <a class="badge-link" href="{% url 'inventory:stock_low' %}">
+                    <span class="badge bg-warning text-dark">⚠️ {{ low_stock_count }} con stock bajo</span>
+                </a>
+                {% else %}
+                <span class="badge bg-warning text-dark">⚠️ {{ low_stock_count }} con stock bajo</span>
+                {% endif %}
+            {% endif %}
+
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    👤 {{ user.get_full_name|default:user.username }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    {% for g in user.groups.all %}
+                    <li><span class="dropdown-item-text small text-muted">Grupo: <span class="badge bg-secondary">{{ g.name }}</span></span></li>
+                    {% empty %}
+                    <li><span class="dropdown-item-text small text-muted">Sin grupo asignado</span></li>
+                    {% endfor %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <form method="post" action="{% url 'core:logout' %}" class="px-3 py-1">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm w-100">🚪 Salir</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+    {% endwith %}
+    {% endif %}
+
+    <main class="app-content">
+        {% bootstrap_messages %}
+        {% block content %}{% endblock %}
+    </main>
+
+    {% if user.is_authenticated %}
+    <footer class="app-footer">
+        <span>🍺 El Patio SIG — gestión de pub</span>
+    </footer>
+    {% endif %}
+</div>
+
+{% bootstrap_javascript %}
+<script src="{% static 'js/app.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

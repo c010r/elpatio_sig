@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% block title %}{% if order %}Agregar ítems{% else %}Abrir comanda{% endif %} — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'tables:table_map' %}">Mesas</a></li>
+        <li class="breadcrumb-item active" aria-current="page">
+            {% if order %}Agregar ítems{% else %}Abrir comanda{% endif %}
+        </li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">
+                    {% if order %}
+                    ➕ Agregar ítems — Comanda #{{ order.pk }} (Mesa {{ order.table.number }})
+                    {% else %}
+                    🍻 Abrir comanda — Mesa {{ table.number }}
+                    {% endif %}
+                </h1>
+            </div>
+            <div class="card-body">
+                {% if not order and table.status == 'ocupada' %}
+                <div class="alert alert-warning small py-2">
+                    ⚠️ La mesa {{ table.number }} figura como <strong>ocupada</strong>. Si ya tiene una comanda abierta, agregá los ítems desde la comanda.
+                </div>
+                {% endif %}
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% bootstrap_form form %}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            {% if order %}➕ Agregar{% else %}🍻 Abrir comanda{% endif %}
+                        </button>
+                        <a href="{% url 'tables:table_map' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

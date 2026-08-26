@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Comanda #{{ order.pk }} — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'tables:table_map' %}">Mesas</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Comanda #{{ order.pk }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h1 class="h4 mb-0">
+        🧾 Comanda #{{ order.pk }} — Mesa {{ order.table.number }}
+        {% if order.status == 'abierta' %}
+        <span class="badge bg-success">Abierta</span>
+        {% elif order.status == 'cerrada' %}
+        <span class="badge bg-info text-dark">Cerrada</span>
+        {% elif order.status == 'pagada' %}
+        <span class="badge bg-primary">Pagada</span>
+        {% elif order.status == 'cancelada' %}
+        <span class="badge bg-danger">Cancelada</span>
+        {% endif %}
+    </h1>
+    <div class="d-flex gap-2 flex-wrap">
+        {% if order.status == 'abierta' %}
+        <a href="{% url 'tables:order_add_item' order.pk %}" class="btn btn-primary btn-sm">➕ Agregar ítem</a>
+        <form method="post" action="{% url 'tables:order_close' order.pk %}" data-confirm="¿Cerrar la comanda #{{ order.pk }}? Se generará la venta y se descontará el stock.">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success btn-sm">💵 Cerrar comanda y cobrar</button>
+        </form>
+        {% endif %}
+        <a href="{% url 'tables:table_map' %}" class="btn btn-outline-secondary btn-sm">Volver</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Ítems de la comanda</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cant.</th>
+                                <th class="text-end">Precio</th>
+                                <th class="text-end">Subtotal</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.items.all %}
+                            <tr>
+                                <td class="fw-semibold">{{ item.product.name }}</td>
+                                <td class="text-center">{{ item.quantity|floatformat:2 }}</td>
+                                <td class="text-end">{{ item.unit_price|money }}</td>
+                                <td class="text-end">{{ item.subtotal|money }}</td>
+                                <td class="text-center">
+                                    {% if item.status == 'pendiente' %}
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                    {% elif item.status == 'entregado' %}
+                                    <span class="badge bg-success">Entregado</span>
+                                    {% elif item.status == 'cancelado' %}
+                                    <span class="badge bg-danger">Cancelado</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if item.status == 'pendiente' %}
+                                    <form method="post" action="{% url 'tables:order_item_status' item.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success">✔ Entregar</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    La comanda no tiene ítems. <a href="{% url 'tables:order_add_item' order.pk %}">Agregar productos</a>.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td colspan="3" class="text-end fw-bold">Total</td>
+                                <td class="text-end fw-bold">{{ order.total|money }}</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">ℹ️ Detalle</h5>
+            </div>
+            <div class="card-body small">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Mesa</span><strong>{{ order.table.number }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Zona</span><span>{{ order.table.get_zone_display|default:order.table.zone|capfirst }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Mozo</span><span>{{ order.waiter.get_full_name|default:order.waiter.username|default:"—" }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Abierta</span><span>{{ order.opened_at|date:"d/m/Y H:i" }}</span>
+                </div>
+                {% if order.closed_at %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Cerrada</span><span>{{ order.closed_at|date:"d/m/Y H:i" }}</span>
+                </div>
+                {% endif %}
+                {% if order.note %}
+                <div class="alert alert-warning py-2 mb-0 mt-3">
+                    📝 <strong>Nota:</strong> {{ order.note }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

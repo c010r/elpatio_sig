@@ -1,0 +1,5 @@
+# Dependencias solo para PRODUCCIÓN (además de requirements.txt)
+# Driver PostgreSQL
+psycopg[binary]>=3.2
+# Servidor WSGI
+gunicorn>=23.0

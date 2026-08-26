@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% block title %}{% if object %}Editar orden de compra{% else %}Nueva orden de compra{% endif %} — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'purchases:purchase_list' %}">Órdenes de compra</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% if object %}Editar{% else %}Nueva{% endif %}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">{% if object %}✏️ Editar orden{% else %}➕ Nueva orden de compra{% endif %}</h1>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info small py-2">
+                    💡 Completá el proveedor y los productos con cantidad y costo unitario. El total se calcula automáticamente.
+                </div>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% bootstrap_form form %}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary">💾 Guardar</button>
+                        <a href="{% url 'purchases:purchase_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

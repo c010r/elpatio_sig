@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Ticket {{ sale.ticket_number }} — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'sales:sale_list' %}">Ventas</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ sale.ticket_number }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 no-print">
+    <h1 class="h4 mb-0">🧾 Ticket {{ sale.ticket_number }}</h1>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-primary btn-sm" data-print>🖨️ Imprimir ticket</button>
+        <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary btn-sm">Volver</a>
+        {% if sale.status != 'anulada' %}
+        <form method="post" action="{% url 'sales:sale_void' sale.pk %}" class="d-inline" data-confirm="¿Anular la venta {{ sale.ticket_number }}? Se repondrá el stock.">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger">Anular venta</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        {% if sale.status == 'anulada' %}
+        <div class="alert alert-danger no-print">❌ Esta venta fue <strong>anulada</strong>.</div>
+        {% endif %}
+
+        <div class="ticket card shadow-sm">
+            <div class="ticket-header">
+                <div class="ticket-brand">🍺 El Patio</div>
+                <div class="ticket-sub">Sistema de gestión — Ticket de venta</div>
+                {% if sale.status == 'anulada' %}
+                <div class="ticket-voided">ANULADA</div>
+                {% endif %}
+            </div>
+
+            <div class="ticket-meta">
+                <div class="d-flex justify-content-between">
+                    <span>Ticket N°</span><strong>{{ sale.ticket_number }}</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Fecha</span><span>{{ sale.created_at|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Cajero</span><span>{{ sale.user.get_full_name|default:sale.user.username }}</span>
+                </div>
+                {% if sale.table %}
+                <div class="d-flex justify-content-between">
+                    <span>Mesa</span><span>{{ sale.table.number }}</span>
+                </div>
+                {% endif %}
+                {% if sale.customer %}
+                <div class="d-flex justify-content-between">
+                    <span>Cliente</span><span>{{ sale.customer.name }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <hr class="ticket-divider">
+
+            <table class="ticket-items">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-center">Cant.</th>
+                        <th class="text-end">Precio</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in sale.items.all %}
+                    <tr>
+                        <td>{{ item.product.name }}</td>
+                        <td class="text-center">{{ item.quantity|floatformat:2 }}</td>
+                        <td class="text-end">{{ item.unit_price|money }}</td>
+                        <td class="text-end">{{ item.subtotal|money }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted">Sin ítems</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <hr class="ticket-divider">
+
+            <div class="ticket-totals">
+                <div class="d-flex justify-content-between">
+                    <span>Subtotal</span><span>{{ sale.subtotal|money }}</span>
+                </div>
+                {% if sale.discount %}
+                <div class="d-flex justify-content-between text-danger">
+                    <span>Descuento</span><span>-{{ sale.discount|money }}</span>
+                </div>
+                {% endif %}
+                <div class="d-flex justify-content-between ticket-total">
+                    <span>TOTAL</span><span>{{ sale.total|money }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Método de pago</span><span>{{ sale.get_payment_method_display|default:sale.payment_method }}</span>
+                </div>
+                {% if sale.payment_method == 'efectivo' %}
+                <div class="d-flex justify-content-between">
+                    <span>Efectivo recibido</span><span>{{ sale.cash_received|money }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Vuelto</span><span>{{ sale.change|money }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <hr class="ticket-divider">
+
+            <div class="ticket-footer text-center">
+                <p class="mb-1">¡Gracias por su visita! 🍻</p>
+                <p class="small text-muted mb-0">Conserve este comprobante</p>
+            </div>
+
+            {% if sale.status == 'anulada' %}
+            <div class="ticket-void-info">
+                <p class="mb-1">Anulada por {{ sale.voided_by.get_full_name|default:sale.voided_by.username|default:"—" }} el {{ sale.voided_at|date:"d/m/Y H:i" }}</p>
+                {% if sale.void_reason %}<p class="mb-0 small">Motivo: {{ sale.void_reason }}</p>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

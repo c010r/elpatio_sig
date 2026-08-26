@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}{{ customer.name }} — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'customers:customer_list' %}">Clientes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ customer.name }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">👤 {{ customer.name }}</h5>
+            </div>
+            <div class="card-body small">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Teléfono</span><span>{{ customer.phone|default:"—" }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Email</span><span>{{ customer.email|default:"—" }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">DNI</span><span>{{ customer.dni|default:"—" }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Nacimiento</span><span>{{ customer.birth_date|date:"d/m/Y"|default:"—" }}</span>
+                </div>
+                <hr>
+                <div class="text-center mb-3">
+                    <div class="display-6 fw-bold text-primary">⭐ {{ customer.points|default:0 }}</div>
+                    <div class="text-muted small">puntos de fidelización</div>
+                </div>
+                {% if customer.points %}
+                <form method="post" action="{% url 'customers:customer_redeem' customer.pk %}" data-confirm="¿Canjear puntos de {{ customer.name }} por un descuento en la próxima venta?">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning w-100">🎁 Canjear puntos</button>
+                </form>
+                {% endif %}
+                <div class="d-flex gap-2 mt-3">
+                    <a href="{% url 'customers:customer_update' customer.pk %}" class="btn btn-outline-primary btn-sm flex-fill">✏️ Editar</a>
+                    <a href="{% url 'customers:customer_list' %}" class="btn btn-outline-secondary btn-sm flex-fill">Volver</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">🧾 Historial de ventas</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Ticket</th>
+                                <th>Fecha</th>
+                                <th class="text-center">Pago</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in customer.sales.all %}
+                            <tr>
+                                <td class="fw-semibold">{{ sale.ticket_number }}</td>
+                                <td>{{ sale.created_at|date:"d/m/Y H:i" }}</td>
+                                <td class="text-center">{{ sale.get_payment_method_display|default:sale.payment_method }}</td>
+                                <td class="text-end">{{ sale.total|money }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'sales:sale_detail' sale.pk %}" class="btn btn-sm btn-outline-primary">🧾 Ver</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    Este cliente todavía no tiene ventas registradas.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

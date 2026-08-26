@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% block title %}Abrir caja — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Abrir caja</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        {% if open_cash_register %}
+        <div class="alert alert-success d-flex justify-content-between align-items-center">
+            <span>✅ Ya hay una caja abierta desde las <strong>{{ open_cash_register.opened_at|time:"H:i" }}</strong>.</span>
+            <a href="{% url 'sales:cash_register_close' %}" class="btn btn-sm btn-outline-danger">Cerrar caja</a>
+        </div>
+        {% else %}
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">🔓 Abrir caja</h1>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Registrá el monto inicial con el que arranca la caja. Solo puede haber <strong>una caja abierta</strong> por vez.
+                </p>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% bootstrap_form form %}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-success">🔓 Abrir caja</button>
+                        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

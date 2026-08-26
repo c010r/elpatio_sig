@@ -1,0 +1,22 @@
+# ============================================================================
+# El Patio SIG — Configuración de pytest
+# Área de propiedad: Pruebas (NO modificar código de producción).
+#
+# - DJANGO_SETTINGS_MODULE: entorno de desarrollo (SQLite).
+# - python_files: solo archivos test_*.py (los tests.py stub de startapp no
+#   se recolectan).
+# - addopts: salida concisa, sin warnings de terceros.
+#   `-p no:cacheprovider`: evita crear .pytest_cache (y los directorios
+#   temporales "pytest-cache-files-*" que deja en la raíz, no borrables bajo
+#   el sandbox de Windows).
+# - La DB de test es la de Django: para SQLite, pytest-django usa una base
+#   en memoria (":memory:") por defecto, creada con `migrate` en cada corrida.
+# ============================================================================
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.dev"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-q --disable-warnings --tb=short -p no:cacheprovider"
+testpaths = ["."]
+norecursedirs = [".*", "tmp_build", "staticfiles", "media", "pytest-cache-files-*"]

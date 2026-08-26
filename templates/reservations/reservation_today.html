@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Reservas de hoy — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Reservas de hoy</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h1 class="h4 mb-0">📅 Reservas de hoy — {{ today|date:"d/m/Y" }}</h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'reservations:reservation_list' %}" class="btn btn-outline-primary btn-sm">Todas</a>
+        <a href="{% url 'reservations:reservation_create' %}" class="btn btn-primary btn-sm">+ Nueva reserva</a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th class="text-center">Mesa</th>
+                        <th class="text-center">Personas</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservation in reservations %}
+                    <tr>
+                        <td class="text-nowrap fw-semibold">{{ reservation.start_time|time:"H:i" }}</td>
+                        <td>{{ reservation.name|default:reservation.customer.name }}</td>
+                        <td>{{ reservation.phone|default:"—" }}</td>
+                        <td class="text-center">{{ reservation.table.number|default:"—" }}</td>
+                        <td class="text-center">{{ reservation.party_size }}</td>
+                        <td class="text-center">
+                            {% if reservation.status == 'pendiente' %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif reservation.status == 'confirmada' %}
+                            <span class="badge bg-success">Confirmada</span>
+                            {% elif reservation.status == 'cancelada' %}
+                            <span class="badge bg-danger">Cancelada</span>
+                            {% elif reservation.status == 'completada' %}
+                            <span class="badge bg-secondary">Completada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-nowrap">
+                            {% if reservation.status == 'pendiente' %}
+                            <form method="post" action="{% url 'reservations:reservation_confirm' reservation.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success">✔ Confirmar</button>
+                            </form>
+                            {% elif reservation.status == 'confirmada' %}
+                            <form method="post" action="{% url 'reservations:reservation_cancel' reservation.pk %}" class="d-inline" data-confirm="¿Cancelar la reserva de {{ reservation.name|default:reservation.customer.name }}?">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">✖ Cancelar</button>
+                            </form>
+                            {% endif %}
+                            <a href="{% url 'reservations:reservation_update' reservation.pk %}" class="btn btn-sm btn-outline-primary">✏️</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            🎉 No hay reservas para hoy.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

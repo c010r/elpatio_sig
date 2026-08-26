@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Punto de venta — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Punto de venta</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+{% if not open_cash_register %}
+<div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span>🔒 <strong>No hay una caja abierta.</strong> Para poder cobrar necesitás abrir la caja primero.</span>
+    <a href="{% url 'sales:cash_register_open' %}" class="btn btn-sm btn-warning">🔓 Abrir caja</a>
+</div>
+{% endif %}
+
+<div class="row g-3">
+    {# ------------------- GRID DE PRODUCTOS ------------------- #}
+    <div class="col-lg-8">
+        <div class="d-flex gap-2 mb-3">
+            <input type="search" id="pos-search" class="form-control" placeholder="🔍 Buscar producto…" autocomplete="off">
+            <a href="{% url 'inventory:stock_low' %}" class="btn btn-outline-warning text-nowrap">⚠️ Stock bajo</a>
+        </div>
+
+        <div class="row g-2 pos-grid" id="pos-grid">
+            {% for product in products %}
+            <div class="col-6 col-md-4 col-xl-3">
+                <div role="button" tabindex="0"
+                        class="card pos-product-card h-100 w-100 text-start border-0
+                               {% if product.stock_current <= 0 %}disabled{% endif %}"
+                        data-product-id="{{ product.pk }}"
+                        data-product-name="{{ product.name }}"
+                        data-product-price="{{ product.sale_price }}"
+                        data-product-price-display="{{ product.sale_price|money }}"
+                        data-product-stock="{{ product.stock_current }}"
+                        {% if product.stock_current <= 0 %}aria-disabled="true"{% endif %}>
+                    <div class="pos-product-img">
+                        {% if product.image %}
+                        <img src="{{ product.image.url }}" alt="{{ product.name }}">
+                        {% else %}
+                        <span>🍺</span>
+                        {% endif %}
+                    </div>
+                    <div class="pos-product-body">
+                        <div class="pos-product-name" title="{{ product.name }}">{{ product.name }}</div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="pos-product-price">{{ product.sale_price|money }}</span>
+                            {% if product.stock_current <= 0 %}
+                            <span class="badge bg-secondary">Sin stock</span>
+                            {% elif product.stock_current <= product.stock_min %}
+                            <span class="badge bg-danger">{{ product.stock_current|floatformat:0 }} {{ product.unit }}</span>
+                            {% else %}
+                            <span class="badge bg-success">{{ product.stock_current|floatformat:0 }} {{ product.unit }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center text-muted py-5">
+                No hay productos activos para vender.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ------------------- CARRITO ------------------- #}
+    <div class="col-lg-4">
+        <div class="card shadow-sm pos-cart-sticky">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">🛒 Carrito</h5>
+                <button type="button" class="btn btn-sm btn-outline-danger" id="cart-clear">Vaciar</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="pos-cart-items" id="cart-items">
+                    <div class="text-center text-muted py-4 small">Tocá un producto para agregarlo</div>
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <div class="d-flex justify-content-between fs-5 fw-bold mb-2">
+                    <span>Total</span>
+                    <span id="cart-total">$U 0,00</span>
+                </div>
+
+                <form method="post" id="pos-form" action="{% url 'sales:pos' %}" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <label class="form-label small mb-1" for="pos-discount">Descuento ($U)</label>
+                        <input type="number" step="0.01" min="0" id="pos-discount" name="discount" class="form-control form-control-sm" value="0">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1" for="pos-payment">Método de pago</label>
+                        <select id="pos-payment" name="payment_method" class="form-select form-select-sm" required>
+                            <option value="efectivo" selected>💵 Efectivo</option>
+                            <option value="tarjeta">💳 Tarjeta</option>
+                            <option value="transferencia">🏦 Transferencia</option>
+                            <option value="otro">📄 Otro</option>
+                        </select>
+                    </div>
+                    <div class="mb-2" id="cash-row">
+                        <label class="form-label small mb-1" for="pos-cash">Efectivo recibido ($U)</label>
+                        <input type="number" step="0.01" min="0" id="pos-cash" name="cash_received" class="form-control form-control-sm">
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mb-2">
+                        <span>Vuelto</span>
+                        <span class="fw-bold" id="pos-change">$U 0,00</span>
+                    </div>
+
+                    {% if open_cash_register %}
+                    <button type="submit" class="btn btn-success btn-lg w-100" id="pos-checkout" {% if not products %}disabled{% endif %}>
+                        💵 Cobrar
+                    </button>
+                    {% else %}
+                    <button type="submit" class="btn btn-secondary btn-lg w-100" disabled title="Abrí la caja para cobrar">
+                        🔒 Sin caja abierta
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.POS_CONFIG = {
+        currency: '$U ',
+        emptyCartMessage: 'El carrito está vacío. Agregá productos para cobrar.',
+        exceedingStockMessage: 'Stock insuficiente para el producto «{name}». Disponible: {stock}.'
+    };
+</script>
+{% endblock %}

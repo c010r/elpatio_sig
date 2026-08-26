@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Movimientos de stock — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'inventory:product_list' %}">Inventario</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Movimientos</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h1 class="h4 mb-0">🔄 Movimientos de stock</h1>
+    <a href="{% url 'inventory:stock_movement_create' %}" class="btn btn-primary btn-sm">+ Nuevo movimiento</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Producto</th>
+                        <th class="text-center">Tipo</th>
+                        <th class="text-end">Cantidad</th>
+                        <th>Referencia</th>
+                        <th>Usuario</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movement in movements %}
+                    <tr>
+                        <td class="text-nowrap">{{ movement.created_at|date:"d/m/Y H:i" }}</td>
+                        <td class="fw-semibold">{{ movement.product.name }}</td>
+                        <td class="text-center">
+                            {% if movement.movement_type == 'entrada' %}
+                            <span class="badge bg-success">Entrada</span>
+                            {% elif movement.movement_type == 'salida' %}
+                            <span class="badge bg-danger">Salida</span>
+                            {% elif movement.movement_type == 'ajuste' %}
+                            <span class="badge bg-warning text-dark">Ajuste</span>
+                            {% elif movement.movement_type == 'venta' %}
+                            <span class="badge bg-info text-dark">Venta</span>
+                            {% elif movement.movement_type == 'compra' %}
+                            <span class="badge bg-primary">Compra</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ movement.movement_type }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-semibold {% if movement.quantity < 0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ movement.quantity|floatformat:2 }}
+                        </td>
+                        <td>{{ movement.reference|default:"—" }}</td>
+                        <td>{{ movement.user.get_full_name|default:movement.user.username|default:"—" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No hay movimientos registrados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include "partials/_pagination.html" %}
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% load money %}
+{% block title %}Cerrar caja — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Cerrar caja</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+{# register: prefiere la variable `register` de la vista; si no, usa la caja abierta global #}
+{% with register=register|default:open_cash_register %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        {% if register %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">🔒 Cerrar caja</h1>
+            </div>
+            <div class="card-body">
+                <div class="row small text-muted mb-3">
+                    <div class="col-6">Abierta por: <strong>{{ register.opened_by.get_full_name|default:register.opened_by.username }}</strong></div>
+                    <div class="col-6 text-end">Apertura: <strong>{{ register.opened_at|date:"d/m/Y H:i" }}</strong></div>
+                    <div class="col-6 mt-2">Monto inicial: <strong>{{ register.opening_amount|money }}</strong></div>
+                    <div class="col-6 mt-2 text-end">Monto esperado: <strong>{{ register.expected_amount|money }}</strong></div>
+                </div>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% bootstrap_form form %}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-danger">🔒 Cerrar caja</button>
+                        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+            <span>No hay ninguna caja abierta en este momento.</span>
+            <a href="{% url 'sales:cash_register_open' %}" class="btn btn-sm btn-outline-success">Abrir caja</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endwith %}
+{% endblock %}

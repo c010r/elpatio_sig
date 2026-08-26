@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Orden {{ purchase.number }} — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'purchases:purchase_list' %}">Órdenes de compra</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ purchase.number }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h1 class="h4 mb-0">🛍️ Orden de compra {{ purchase.number }}</h1>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'purchases:purchase_list' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+        {% if purchase.status == 'pendiente' %}
+        <a href="{% url 'purchases:purchase_receive' purchase.pk %}" class="btn btn-success btn-sm">📥 Recibir</a>
+        <form method="post" action="{% url 'purchases:purchase_cancel' purchase.pk %}" class="d-inline" data-confirm="¿Cancelar la orden {{ purchase.number }}?">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger btn-sm">✖ Cancelar orden</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">ℹ️ Datos de la orden</h5>
+            </div>
+            <div class="card-body small">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Número</span><strong>{{ purchase.number }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Proveedor</span><span>{{ purchase.supplier.name }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Estado</span>
+                    <span>
+                        {% if purchase.status == 'pendiente' %}
+                        <span class="badge bg-warning text-dark">Pendiente</span>
+                        {% elif purchase.status == 'recibida' %}
+                        <span class="badge bg-success">Recibida</span>
+                        {% elif purchase.status == 'cancelada' %}
+                        <span class="badge bg-danger">Cancelada</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ purchase.get_status_display|default:purchase.status }}</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Creada</span><span>{{ purchase.created_at|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Solicitada por</span><span>{{ purchase.ordered_by.get_full_name|default:purchase.ordered_by.username|default:"—" }}</span>
+                </div>
+                {% if purchase.received_at %}
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Recibida</span><span>{{ purchase.received_at|date:"d/m/Y H:i" }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Ítems de la orden</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-end">Costo unit.</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in purchase.items.all %}
+                            <tr>
+                                <td class="fw-semibold">{{ item.product.name }}</td>
+                                <td class="text-center">{{ item.quantity|floatformat:2 }}</td>
+                                <td class="text-end">{{ item.unit_cost|money }}</td>
+                                <td class="text-end">{{ item.subtotal|money }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">La orden no tiene ítems.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td colspan="3" class="text-end fw-bold">Total</td>
+                                <td class="text-end fw-bold">{{ purchase.total|money }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Recibir orden {{ purchase.number }} — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'purchases:purchase_list' %}">Órdenes de compra</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Recibir {{ purchase.number }}</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <h1 class="h4 mb-0">📥 Recibir orden {{ purchase.number }}</h1>
+            <div class="d-flex gap-2">
+                <a href="{% url 'purchases:purchase_detail' purchase.pk %}" class="btn btn-outline-secondary btn-sm">Volver</a>
+                {% if purchase.status == 'pendiente' %}
+                <form method="post" action="{% url 'purchases:purchase_receive' purchase.pk %}" data-confirm="¿Confirmar recepción de la orden {{ purchase.number }}? Se generará el movimiento de entrada de stock y se actualizarán los costos.">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm">✅ Confirmar recepción</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">ℹ️ Datos de la orden</h5>
+            </div>
+            <div class="card-body small">
+                <div class="row">
+                    <div class="col-6">Proveedor: <strong>{{ purchase.supplier.name }}</strong></div>
+                    <div class="col-6 text-end">Creada: <strong>{{ purchase.created_at|date:"d/m/Y H:i" }}</strong></div>
+                    <div class="col-6 mt-2">Solicitada por: <strong>{{ purchase.ordered_by.get_full_name|default:purchase.ordered_by.username|default:"—" }}</strong></div>
+                    <div class="col-6 mt-2 text-end">
+                        Estado:
+                        {% if purchase.status == 'pendiente' %}<span class="badge bg-warning text-dark">Pendiente</span>
+                        {% elif purchase.status == 'recibida' %}<span class="badge bg-success">Recibida</span>
+                        {% elif purchase.status == 'cancelada' %}<span class="badge bg-danger">Cancelada</span>{% endif %}
+                    </div>
+                    {% if purchase.received_at %}
+                    <div class="col-12 mt-2">Recibida: <strong>{{ purchase.received_at|date:"d/m/Y H:i" }}</strong></div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Ítems de la orden</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-end">Costo unit.</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in purchase.items.all %}
+                            <tr>
+                                <td class="fw-semibold">{{ item.product.name }}</td>
+                                <td class="text-center">{{ item.quantity|floatformat:2 }}</td>
+                                <td class="text-end">{{ item.unit_cost|money }}</td>
+                                <td class="text-end">{{ item.subtotal|money }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">La orden no tiene ítems.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td colspan="3" class="text-end fw-bold">Total</td>
+                                <td class="text-end fw-bold">{{ purchase.total|money }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

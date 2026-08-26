@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Productos — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'inventory:product_list' %}">Inventario</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Productos</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h1 class="h4 mb-0">📦 Productos</h1>
+    <a href="{% url 'inventory:product_create' %}" class="btn btn-primary btn-sm">+ Nuevo producto</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Unidad</th>
+                        <th class="text-end">Precio venta</th>
+                        <th class="text-center">Stock</th>
+                        <th class="text-center">Stock mín.</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                {% if product.image %}
+                                <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-thumb">
+                                {% else %}
+                                <span class="product-thumb product-thumb-placeholder">🍺</span>
+                                {% endif %}
+                                <span class="fw-semibold">{{ product.name }}</span>
+                            </div>
+                        </td>
+                        <td>{{ product.category.name|default:"—" }}</td>
+                        <td>{{ product.get_unit_display|default:product.unit }}</td>
+                        <td class="text-end">{{ product.sale_price|money }}</td>
+                        <td class="text-center">
+                            {% if product.stock_current <= product.stock_min %}
+                            <span class="badge bg-danger">{{ product.stock_current|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="badge bg-success">{{ product.stock_current|floatformat:2 }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ product.stock_min|floatformat:2 }}</td>
+                        <td class="text-center">
+                            {% if product.is_active %}
+                            <span class="badge bg-success">Activo</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'inventory:product_update' product.pk %}" class="btn btn-sm btn-outline-primary">✏️ Editar</a>
+                            <form method="post" action="{% url 'inventory:product_delete' product.pk %}" class="d-inline" data-confirm="¿Eliminar el producto «{{ product.name }}»?">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            No hay productos cargados. <a href="{% url 'inventory:product_create' %}">Crear el primero</a>.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include "partials/_pagination.html" %}
+{% endblock %}
