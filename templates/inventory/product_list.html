@@ -42,7 +42,7 @@
                                 {% if product.image %}
                                 <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-thumb">
                                 {% else %}
-                                <span class="product-thumb product-thumb-placeholder">🍺</span>
+                                <span class="product-thumb product-thumb-placeholder"><i class="bi bi-cup-straw"></i></span>
                                 {% endif %}
                                 <span class="fw-semibold">{{ product.name }}</span>
                             </div>

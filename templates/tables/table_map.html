@@ -46,7 +46,7 @@
                     <span class="d-flex align-items-center gap-2">
                         {% if table.status == 'libre' %}<i class="bi bi-check-circle-fill text-success"></i>
                         {% elif table.status == 'ocupada' %}<i class="bi bi-x-circle-fill text-danger"></i>
-                        {% elif table.status == 'reservada' %}<i class="bi bi-calendar-check-fill" style="color: var(--ep-warn);"></i>
+                        {% elif table.status == 'reservada' %}<i class="bi bi-calendar-check-fill"></i>
                         {% elif table.status == 'limpieza' %}<i class="bi bi-broom-fill text-secondary"></i>
                         {% else %}<i class="bi bi-circle-fill text-secondary"></i>{% endif %}
                         <span class="table-number">Mesa {{ table.number }}</span>

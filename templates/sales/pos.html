@@ -60,7 +60,7 @@
                         {% if product.image %}
                         <img src="{{ product.image.url }}" alt="{{ product.name }}">
                         {% else %}
-                        <span>🍺</span>
+                        <i class="bi bi-cup-straw"></i>
                         {% endif %}
                     </div>
                     <div class="pos-product-body">
@@ -102,7 +102,7 @@
     <div class="col-lg-4">
         <div class="card shadow-sm pos-cart-sticky">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-cart3 text-warning me-1"></i>Carrito</h5>
+                <h5 class="mb-0"><i class="bi bi-cart3 text-success me-1"></i>Carrito</h5>
                 <button type="button" class="btn btn-sm btn-outline-danger" id="cart-clear"><i class="bi bi-trash3 me-1"></i>Vaciar</button>
             </div>
             <div class="card-body p-0">
@@ -122,7 +122,7 @@
                 </div>
                 <div class="d-flex justify-content-between fs-5 fw-bold mb-2">
                     <span class="text-uppercase" style="letter-spacing:.5px;">Total</span>
-                    <span id="cart-total" class="text-warning" style="font-family: var(--ep-font-display); font-size: 1.35rem;">$U 0,00</span>
+                    <span id="cart-total" class="cart-total-amount">$U 0,00</span>
                 </div>
 
                 <form method="post" id="pos-form" action="{% url 'sales:pos' %}" novalidate>
