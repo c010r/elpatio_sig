@@ -41,17 +41,21 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <a href="{% url 'inventory:category_update' category.pk %}" class="btn btn-sm btn-outline-primary">✏️ Editar</a>
+                            <a href="{% url 'inventory:category_update' category.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i>Editar</a>
                             <form method="post" action="{% url 'inventory:category_delete' category.pk %}" class="d-inline" data-confirm="¿Eliminar la categoría «{{ category.name }}»?">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-danger">🗑️ Eliminar</button>
+                                <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash3"></i> Eliminar</button>
                             </form>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-4">
-                            No hay categorías cargadas.
+                        <td colspan="4">
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="bi bi-tags"></i></div>
+                                <div class="empty-title">No hay categorías</div>
+                                <div class="empty-text">Agrupá tus productos por categoría para ordenar el inventario.</div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

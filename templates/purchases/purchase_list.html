@@ -51,7 +51,7 @@
                         </td>
                         <td class="text-end">{{ purchase.total|money }}</td>
                         <td class="text-end text-nowrap">
-                            <a href="{% url 'purchases:purchase_detail' purchase.pk %}" class="btn btn-sm btn-outline-secondary">👁️ Ver</a>
+                            <a href="{% url 'purchases:purchase_detail' purchase.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye me-1"></i>Ver</a>
                             {% if purchase.status == 'pendiente' %}
                             <a href="{% url 'purchases:purchase_receive' purchase.pk %}" class="btn btn-sm btn-outline-success">📥 Recibir</a>
                             <form method="post" action="{% url 'purchases:purchase_cancel' purchase.pk %}" class="d-inline" data-confirm="¿Cancelar la orden {{ purchase.number }}?">
@@ -63,8 +63,12 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
-                            No hay órdenes de compra.
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="bi bi-cart-check"></i></div>
+                                <div class="empty-title">No hay órdenes de compra</div>
+                                <div class="empty-text">Creá una orden para reponer el stock con tus proveedores.</div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

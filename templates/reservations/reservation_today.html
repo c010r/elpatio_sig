@@ -65,13 +65,17 @@
                                 <button type="submit" class="btn btn-sm btn-outline-danger">✖ Cancelar</button>
                             </form>
                             {% endif %}
-                            <a href="{% url 'reservations:reservation_update' reservation.pk %}" class="btn btn-sm btn-outline-primary">✏️</a>
+                            <a href="{% url 'reservations:reservation_update' reservation.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
-                            🎉 No hay reservas para hoy.
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="bi bi-calendar-heart"></i></div>
+                                <div class="empty-title">🎉 No hay reservas para hoy</div>
+                                <div class="empty-text">Día despejado. Tocá «Nueva reserva» si llega algo sobre la marcha.</div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

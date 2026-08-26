@@ -59,8 +59,12 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
-                            No hay movimientos registrados.
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="bi bi-arrow-repeat"></i></div>
+                                <div class="empty-title">Sin movimientos registrados</div>
+                                <div class="empty-text">Entradas, salidas y ajustes de stock aparecerán acá.</div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

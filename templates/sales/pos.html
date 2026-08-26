@@ -102,8 +102,8 @@
     <div class="col-lg-4">
         <div class="card shadow-sm pos-cart-sticky">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">🛒 Carrito</h5>
-                <button type="button" class="btn btn-sm btn-outline-danger" id="cart-clear">Vaciar</button>
+                <h5 class="mb-0"><i class="bi bi-cart3 text-warning me-1"></i>Carrito</h5>
+                <button type="button" class="btn btn-sm btn-outline-danger" id="cart-clear"><i class="bi bi-trash3 me-1"></i>Vaciar</button>
             </div>
             <div class="card-body p-0">
                 <div class="pos-cart-items" id="cart-items">
@@ -121,18 +121,18 @@
                     <span>Propina</span><span id="cart-tip-line">$U 0,00</span>
                 </div>
                 <div class="d-flex justify-content-between fs-5 fw-bold mb-2">
-                    <span>Total</span>
-                    <span id="cart-total">$U 0,00</span>
+                    <span class="text-uppercase" style="letter-spacing:.5px;">Total</span>
+                    <span id="cart-total" class="text-warning" style="font-family: var(--ep-font-display); font-size: 1.35rem;">$U 0,00</span>
                 </div>
 
                 <form method="post" id="pos-form" action="{% url 'sales:pos' %}" novalidate>
                     {% csrf_token %}
                     <div class="mb-2">
-                        <label class="form-label small mb-1" for="pos-discount">Descuento ($U)</label>
+                        <label class="form-label small mb-1" for="pos-discount"><i class="bi bi-percent me-1"></i>Descuento ($U)</label>
                         <input type="number" step="0.01" min="0" id="pos-discount" name="discount" class="form-control form-control-sm" value="0">
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small mb-1">Propina</label>
+                        <label class="form-label small mb-1"><i class="bi bi-hand-thumbs-up me-1"></i>Propina</label>
                         <div class="d-flex gap-1 mb-1">
                             <button type="button" class="btn btn-sm btn-outline-secondary tip-btn" data-tip-percent="10">10%</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary tip-btn" data-tip-percent="15">15%</button>
@@ -154,7 +154,7 @@
                         </select>
                     </div>
                     <div class="mb-2" id="cash-row">
-                        <label class="form-label small mb-1" for="pos-cash">Efectivo recibido ($U)</label>
+                        <label class="form-label small mb-1" for="pos-cash"><i class="bi bi-cash me-1"></i>Efectivo recibido ($U)</label>
                         <input type="number" step="0.01" min="0" id="pos-cash" name="cash_received" class="form-control form-control-sm">
                     </div>
                     <div class="d-flex justify-content-between small text-muted mb-2">
@@ -164,11 +164,11 @@
 
                     {% if open_cash_register %}
                     <button type="submit" class="btn btn-success btn-lg w-100" id="pos-checkout" {% if not products %}disabled{% endif %}>
-                        💵 Cobrar
+                        <i class="bi bi-cash-coin me-1"></i>Cobrar
                     </button>
                     {% else %}
                     <button type="submit" class="btn btn-secondary btn-lg w-100" disabled title="Abrí la caja para cobrar">
-                        🔒 Sin caja abierta
+                        <i class="bi bi-lock me-1"></i>Sin caja abierta
                     </button>
                     {% endif %}
                 </form>

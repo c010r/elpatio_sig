@@ -52,8 +52,12 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
-                            🎉 Todo el stock está en niveles saludables.
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="bi bi-emoji-smile"></i></div>
+                                <div class="empty-title">🎉 Todo el stock está en niveles saludables</div>
+                                <div class="empty-text">Nada que reponer por ahora.</div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

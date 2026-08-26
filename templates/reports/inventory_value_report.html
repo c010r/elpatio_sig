@@ -68,8 +68,12 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">
-                            No hay productos en el inventario.
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="bi bi-piggy-bank"></i></div>
+                                <div class="empty-title">No hay productos en el inventario</div>
+                                <div class="empty-text">Cargá productos para ver el valor del stock.</div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
