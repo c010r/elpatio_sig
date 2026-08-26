@@ -89,11 +89,8 @@ class OrderCloseForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        if (
-            cleaned.get("payment_method") == Sale.PaymentMethod.EFECTIVO
-            and cleaned.get("cash_received") is None
-        ):
-            self.add_error("cash_received", "Indicá el efectivo recibido para pagos en efectivo.")
+        # "Efectivo recibido" opcional: si no se indica, el backend asume pago
+        # exacto (recibido = total, vuelto = 0) en complete_sale/close_to_sale.
         discount = cleaned.get("discount") or Decimal("0")
         tip = cleaned.get("tip") or Decimal("0")
         if discount < 0:
