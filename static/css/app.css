@@ -15,24 +15,30 @@
 
     --ep-ink: #0f172a;             /* texto principal */
     --ep-ink-soft: #475569;        /* texto secundario */
-    --ep-ink-muted: #64748b;       /* texto terciario */
+    --ep-ink-muted: #5f6e85;       /* texto terciario (AA sobre fondo claro) */
 
-    --ep-emerald: #059669;         /* acento primario */
-    --ep-emerald-strong: #047857;  /* hover */
+    --ep-emerald: #059669;         /* acento primario (fondos / iconos grandes) */
+    --ep-emerald-strong: #047857;  /* hover / texto sobre claro */
     --ep-emerald-soft: #d1fae5;    /* fondo pastel esmeralda */
     --ep-emerald-ink: #065f46;     /* texto sobre pastel esmeralda */
 
     --ep-sky: #3b82f6;             /* acento secundario / info */
     --ep-violet: #8b5cf6;
-    --ep-amber: #d97706;           /* warning */
+    --ep-amber: #b45309;           /* warning (AA sobre blanco) */
     --ep-amber-soft: #fef3c7;
     --ep-amber-ink: #92400e;
     --ep-rose: #e11d48;            /* danger */
     --ep-rose-soft: #ffe4e6;
     --ep-rose-ink: #9f1239;
-    --ep-slate: #64748b;           /* secondary */
+    --ep-slate: #5f6e85;           /* secondary (AA sobre blanco) */
     --ep-slate-soft: #f1f5f9;
     --ep-slate-ink: #475569;
+
+    /* Enlaces y botones (tonos AA) */
+    --ep-link: #047857;
+    --ep-link-hover: #065f46;
+    --ep-btn-bg: #047857;
+    --ep-btn-hover: #034a33;
 
     --ep-border: #e2e8f0;
     --ep-border-strong: #cbd5e1;
@@ -88,8 +94,8 @@ h1, h2, h3, h4, h5, .h1, .h2, .h3, .h4, .h5 {
 h1.h4, .h1.h4 { font-size: 1.35rem; font-weight: 800; }
 h5, .h5 { font-size: 1rem; font-weight: 700; }
 
-a { color: var(--ep-emerald); transition: color var(--ep-transition); }
-a:hover { color: var(--ep-emerald-strong); }
+a { color: var(--ep-link); transition: color var(--ep-transition); }
+a:hover { color: var(--ep-link-hover); }
 
 .text-muted { color: var(--ep-ink-muted) !important; }
 
@@ -105,12 +111,12 @@ a:hover { color: var(--ep-emerald-strong); }
 .btn:focus-visible { outline: 2px solid var(--ep-emerald); outline-offset: 2px; }
 
 .btn-primary {
-    --bs-btn-bg: var(--ep-emerald);
-    --bs-btn-border-color: var(--ep-emerald);
-    --bs-btn-hover-bg: var(--ep-emerald-strong);
-    --bs-btn-hover-border-color: var(--ep-emerald-strong);
-    --bs-btn-active-bg: var(--ep-emerald-strong);
-    --bs-btn-active-border-color: var(--ep-emerald-strong);
+    --bs-btn-bg: var(--ep-btn-bg);
+    --bs-btn-border-color: var(--ep-btn-bg);
+    --bs-btn-hover-bg: var(--ep-btn-hover);
+    --bs-btn-hover-border-color: var(--ep-btn-hover);
+    --bs-btn-active-bg: var(--ep-btn-hover);
+    --bs-btn-active-border-color: var(--ep-btn-hover);
     --bs-btn-color: #fff;
     --bs-btn-hover-color: #fff;
     --bs-btn-active-color: #fff;
@@ -119,23 +125,23 @@ a:hover { color: var(--ep-emerald-strong); }
 .btn-primary:hover { box-shadow: 0 6px 14px -4px rgba(5, 150, 105, .55); transform: translateY(-1px); }
 
 .btn-outline-primary {
-    --bs-btn-color: var(--ep-emerald);
-    --bs-btn-border-color: #a7e3d0;
-    --bs-btn-hover-bg: var(--ep-emerald);
-    --bs-btn-hover-border-color: var(--ep-emerald);
+    --bs-btn-color: var(--ep-link);
+    --bs-btn-border-color: var(--ep-link);
+    --bs-btn-hover-bg: var(--ep-btn-bg);
+    --bs-btn-hover-border-color: var(--ep-btn-bg);
     --bs-btn-hover-color: #fff;
-    --bs-btn-active-bg: var(--ep-emerald-strong);
-    --bs-btn-active-border-color: var(--ep-emerald-strong);
+    --bs-btn-active-bg: var(--ep-btn-hover);
+    --bs-btn-active-border-color: var(--ep-btn-hover);
     --bs-btn-active-color: #fff;
 }
 
 .btn-success {
-    --bs-btn-bg: var(--ep-emerald);
-    --bs-btn-border-color: var(--ep-emerald);
-    --bs-btn-hover-bg: var(--ep-emerald-strong);
-    --bs-btn-hover-border-color: var(--ep-emerald-strong);
-    --bs-btn-active-bg: #03603f;
-    --bs-btn-active-border-color: #03603f;
+    --bs-btn-bg: var(--ep-btn-bg);
+    --bs-btn-border-color: var(--ep-btn-bg);
+    --bs-btn-hover-bg: var(--ep-btn-hover);
+    --bs-btn-hover-border-color: var(--ep-btn-hover);
+    --bs-btn-active-bg: #034a33;
+    --bs-btn-active-border-color: #034a33;
     box-shadow: 0 4px 10px -4px rgba(5, 150, 105, .5);
 }
 .btn-danger {
@@ -217,7 +223,7 @@ a:hover { color: var(--ep-emerald-strong); }
     font-weight: 800;
     letter-spacing: .5px;
     font-family: var(--ep-font-display);
-    background: linear-gradient(145deg, var(--ep-emerald), var(--ep-emerald-strong));
+    background: linear-gradient(145deg, var(--ep-btn-bg), var(--ep-btn-hover));
     color: #fff;
     border-radius: 10px;
     box-shadow: 0 3px 8px -2px rgba(5, 150, 105, .5);
@@ -356,7 +362,7 @@ a:hover { color: var(--ep-emerald-strong); }
 .user-avatar {
     width: 32px; height: 32px;
     border-radius: 50%;
-    background: linear-gradient(145deg, var(--ep-emerald), var(--ep-emerald-strong));
+    background: linear-gradient(145deg, var(--ep-btn-bg), var(--ep-btn-hover));
     color: #fff;
     font-weight: 700;
     font-size: .88rem;
@@ -442,7 +448,7 @@ body:not(.app-auth) .app-main { margin-left: 0; }
     font-weight: 800;
     letter-spacing: 1px;
     font-family: var(--ep-font-display);
-    background: linear-gradient(145deg, var(--ep-emerald), var(--ep-emerald-strong));
+    background: linear-gradient(145deg, var(--ep-btn-bg), var(--ep-btn-hover));
     color: #fff;
     border-radius: 18px;
     box-shadow: 0 10px 24px -8px rgba(5, 150, 105, .55);
@@ -524,7 +530,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     font-weight: 700;
     flex-shrink: 0;
 }
-.rank-medal.gold { background: linear-gradient(145deg, #fde68a, #f59e0b); color: #78350f; box-shadow: 0 2px 6px -2px rgba(217, 119, 6, .5); }
+.rank-medal.gold { background: linear-gradient(145deg, #fde68a, #f59e0b); color: #451a03; box-shadow: 0 2px 6px -2px rgba(217, 119, 6, .5); }
 .rank-medal.silver { background: linear-gradient(145deg, #e2e8f0, #cbd5e1); color: #334155; }
 .rank-medal.bronze { background: linear-gradient(145deg, #fed7aa, #d97706); color: #431407; }
 
@@ -538,7 +544,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     letter-spacing: .8px;
     font-size: .7rem;
     font-weight: 700;
-    color: var(--ep-ink-muted);
+    color: var(--ep-ink-soft);
     background: var(--ep-surface-2);
     border-bottom: 1px solid var(--ep-border);
     padding: .75rem .9rem;
@@ -565,7 +571,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     transition: all var(--ep-transition);
 }
 .page-link:hover { background: var(--ep-slate-soft); color: var(--ep-ink); border-color: var(--ep-border-strong); }
-.page-item.active .page-link { background: var(--ep-emerald); border-color: var(--ep-emerald); color: #fff; font-weight: 700; box-shadow: 0 3px 8px -3px rgba(5, 150, 105, .6); }
+.page-item.active .page-link { background: var(--ep-btn-bg); border-color: var(--ep-btn-bg); color: #fff; font-weight: 700; box-shadow: 0 3px 8px -3px rgba(5, 150, 105, .6); }
 
 /* ==========================================================================
    FORMULARIOS
@@ -637,7 +643,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     font-family: var(--ep-font-display);
     font-weight: 700;
     font-size: 1rem;
-    color: var(--ep-emerald);
+    color: var(--ep-link);
     letter-spacing: -.01em;
 }
 
@@ -692,7 +698,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     font-size: 1.4rem;
     font-weight: 800;
     letter-spacing: -.02em;
-    color: var(--ep-emerald);
+    color: var(--ep-link);
 }
 #pos-checkout {
     min-height: 52px;
@@ -706,8 +712,8 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 
 .tip-btn { transition: all var(--ep-transition); }
 .tip-btn.active {
-    background: var(--ep-emerald);
-    border-color: var(--ep-emerald);
+    background: var(--ep-btn-bg);
+    border-color: var(--ep-btn-bg);
     color: #fff;
     font-weight: 700;
     box-shadow: 0 3px 8px -3px rgba(5, 150, 105, .55);
@@ -752,7 +758,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 
 .table-libre { border-top-color: var(--ep-emerald); }
 .table-libre .table-status-badge { background: var(--ep-emerald-soft); color: var(--ep-emerald-ink); }
-.table-libre i { color: var(--ep-emerald); }
+.table-libre i { color: var(--ep-link); }
 
 .table-ocupada { border-top-color: var(--ep-rose); }
 .table-ocupada .table-status-badge { background: var(--ep-rose-soft); color: var(--ep-rose-ink); }
@@ -796,7 +802,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     font-size: 1.1rem;
     font-weight: 800;
     font-family: var(--ep-font-display);
-    background: linear-gradient(145deg, var(--ep-emerald), var(--ep-emerald-strong));
+    background: linear-gradient(145deg, var(--ep-btn-bg), var(--ep-btn-hover));
     color: #fff;
     border-radius: 14px;
     box-shadow: 0 5px 12px -4px rgba(5, 150, 105, .5);
@@ -828,7 +834,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     margin-top: .35rem;
     padding-top: .4rem;
     letter-spacing: -.01em;
-    color: var(--ep-emerald);
+    color: var(--ep-link);
 }
 .ticket-footer { padding: .85rem 1rem .8rem; }
 .ticket-void-info {
@@ -1020,6 +1026,12 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     --ep-border: #334155;
     --ep-border-strong: #475569;
 
+    /* Enlaces y botones (tonos AA en dark) */
+    --ep-link: #10b981;
+    --ep-link-hover: #34d399;
+    --ep-btn-bg: #047857;
+    --ep-btn-hover: #065f46;
+
     --ep-row-striped: rgba(148, 163, 184, .05);
     --ep-row-hover: rgba(148, 163, 184, .12);
     --ep-img-grad: linear-gradient(180deg, #1e293b, #172033);
@@ -1046,12 +1058,21 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 [data-theme="dark"] .login-logo,
 [data-theme="dark"] .ticket-logo,
 [data-theme="dark"] .user-avatar {
-    background: linear-gradient(145deg, var(--ep-emerald), #059669);
+    background: linear-gradient(145deg, var(--ep-btn-bg), var(--ep-btn-hover));
     box-shadow: 0 6px 16px -6px rgba(16, 185, 129, .6);
 }
 
 [data-theme="dark"] .card-header { background: var(--ep-surface-2); }
 [data-theme="dark"] .bg-white { background-color: var(--ep-surface) !important; }
+
+[data-theme="dark"] .btn-danger {
+    --bs-btn-bg: #be123c;
+    --bs-btn-border-color: #be123c;
+    --bs-btn-hover-bg: #a30f33;
+    --bs-btn-hover-border-color: #a30f33;
+    --bs-btn-active-bg: #8c0d2b;
+    --bs-btn-active-border-color: #8c0d2b;
+}
 
 /* Bootstrap: inputs, tablas, dropdowns, textos utilitarios */
 [data-theme="dark"] .form-control,
@@ -1066,7 +1087,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 [data-theme="dark"] select option { background-color: #1e293b; color: var(--ep-ink); }
 
 [data-theme="dark"] .table { color: var(--ep-ink); }
-[data-theme="dark"] .table thead th { background: var(--ep-surface-2); color: var(--ep-ink-muted); }
+[data-theme="dark"] .table thead th { background: var(--ep-surface-2); color: var(--ep-ink-soft); }
 
 [data-theme="dark"] .dropdown-menu {
     background-color: var(--ep-surface);
@@ -1116,7 +1137,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 [data-theme="dark"] .ticket { background: var(--ep-surface); color: var(--ep-ink); }
 [data-theme="dark"] .ticket-header { background: var(--ep-surface-2); }
 [data-theme="dark"] .ticket-items th { border-bottom-color: var(--ep-ink); color: var(--ep-ink-soft); }
-[data-theme="dark"] .ticket-total { border-top-color: var(--ep-ink); color: var(--ep-emerald); }
+[data-theme="dark"] .ticket-total { border-top-color: var(--ep-ink); color: var(--ep-link); }
 
 /* ==========================================================================
    RESPONSIVE EXTRA (móvil / tablet)
