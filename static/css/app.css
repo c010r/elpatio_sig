@@ -47,6 +47,11 @@
     --ep-shadow-md: 0 4px 12px rgba(15, 23, 42, .08), 0 10px 28px rgba(15, 23, 42, .06);
     --ep-shadow-lg: 0 20px 50px rgba(15, 23, 42, .16);
 
+    /* ---------- Derivadas (filas de tabla, imágenes placeholder) ---------- */
+    --ep-row-striped: #f8fafc;
+    --ep-row-hover: #f1f5f9;
+    --ep-img-grad: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+
     /* ---------- Movimiento ---------- */
     --ep-transition: 160ms cubic-bezier(.4, 0, .2, 1);
     --ep-transition-slow: 280ms cubic-bezier(.4, 0, .2, 1);
@@ -542,8 +547,8 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     z-index: 1;
 }
 .table td { padding: .72rem .9rem; vertical-align: middle; border-color: var(--ep-border); }
-.table-striped > tbody > tr:nth-of-type(odd) > * { background-color: #f8fafc; }
-.table-hover > tbody > tr:hover > * { background-color: #f1f5f9; transition: background-color var(--ep-transition); }
+.table-striped > tbody > tr:nth-of-type(odd) > * { background-color: var(--ep-row-striped); }
+.table-hover > tbody > tr:hover > * { background-color: var(--ep-row-hover); transition: background-color var(--ep-transition); }
 .table tfoot td, .table tfoot th { background: var(--ep-surface-2); border-top: 1px solid var(--ep-border); }
 .table-responsive { border-radius: 0 0 var(--ep-radius-md) var(--ep-radius-md); }
 
@@ -607,7 +612,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 .pos-product-card.disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.4); }
 .pos-product-img {
     height: 92px;
-    background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+    background: var(--ep-img-grad);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -955,6 +960,177 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     .app-topbar { flex-direction: row; }
     .app-content { padding: 1rem .85rem 1.5rem; }
     .app-topbar .date-pill { display: none; }
+}
+
+/* ---------- Toggle de tema ---------- */
+.theme-toggle {
+    width: 38px; height: 38px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--ep-border);
+    background: var(--ep-surface);
+    color: var(--ep-ink-soft);
+    font-size: 1.05rem;
+    transition: all var(--ep-transition);
+}
+.theme-toggle:hover {
+    background: var(--ep-slate-soft);
+    color: var(--ep-ink);
+    border-color: var(--ep-border-strong);
+}
+.theme-toggle:focus-visible { outline: 2px solid var(--ep-emerald); outline-offset: 2px; }
+
+/* ==========================================================================
+   TEMA OSCURO — [data-theme="dark"]
+   Misma identidad esmeralda, superficies oscuras. Contraste AA.
+   ========================================================================== */
+[data-theme="dark"] {
+    --ep-bg: #0f172a;
+    --ep-bg-alt: #0b1222;
+
+    --ep-surface: #1e293b;
+    --ep-surface-2: #24344d;
+
+    --ep-ink: #e2e8f0;
+    --ep-ink-soft: #cbd5e1;
+    --ep-ink-muted: #94a3b8;
+
+    --ep-emerald: #10b981;
+    --ep-emerald-strong: #34d399;
+    --ep-emerald-soft: rgba(16, 185, 129, .16);
+    --ep-emerald-ink: #6ee7b7;
+
+    --ep-sky: #38bdf8;
+    --ep-violet: #a78bfa;
+    --ep-amber: #fbbf24;
+    --ep-amber-soft: rgba(251, 191, 36, .15);
+    --ep-amber-ink: #fcd34d;
+    --ep-rose: #fb7185;
+    --ep-rose-soft: rgba(251, 113, 133, .15);
+    --ep-rose-ink: #fda4af;
+    --ep-slate: #94a3b8;
+    --ep-slate-soft: rgba(148, 163, 184, .15);
+    --ep-slate-ink: #cbd5e1;
+
+    --ep-border: #334155;
+    --ep-border-strong: #475569;
+
+    --ep-row-striped: rgba(148, 163, 184, .05);
+    --ep-row-hover: rgba(148, 163, 184, .12);
+    --ep-img-grad: linear-gradient(180deg, #1e293b, #172033);
+
+    --ep-shadow-sm: 0 1px 3px rgba(0, 0, 0, .35);
+    --ep-shadow-md: 0 4px 12px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .3);
+    --ep-shadow-lg: 0 20px 50px rgba(0, 0, 0, .55);
+}
+
+/* Ajustes de componentes en dark */
+[data-theme="dark"] body.app-body {
+    background-image: none;
+}
+
+[data-theme="dark"] .sidebar-brand::after {
+    background: linear-gradient(90deg, var(--ep-emerald), transparent 70%);
+}
+
+[data-theme="dark"] .login-wrap {
+    background: linear-gradient(180deg, #0f172a 0%, #111c33 60%, #0b1222 100%);
+}
+
+[data-theme="dark"] .brand-logo,
+[data-theme="dark"] .login-logo,
+[data-theme="dark"] .ticket-logo,
+[data-theme="dark"] .user-avatar {
+    background: linear-gradient(145deg, var(--ep-emerald), #059669);
+    box-shadow: 0 6px 16px -6px rgba(16, 185, 129, .6);
+}
+
+[data-theme="dark"] .card-header { background: var(--ep-surface-2); }
+[data-theme="dark"] .bg-white { background-color: var(--ep-surface) !important; }
+
+/* Bootstrap: inputs, tablas, dropdowns, textos utilitarios */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background-color: #0f172a;
+    color: var(--ep-ink);
+}
+[data-theme="dark"] .form-control::placeholder { color: var(--ep-ink-muted); }
+[data-theme="dark"] .form-control:disabled,
+[data-theme="dark"] .form-select:disabled { background-color: #16213a; color: var(--ep-ink-muted); }
+[data-theme="dark"] .form-check-input { background-color: #0f172a; }
+[data-theme="dark"] select option { background-color: #1e293b; color: var(--ep-ink); }
+
+[data-theme="dark"] .table { color: var(--ep-ink); }
+[data-theme="dark"] .table thead th { background: var(--ep-surface-2); color: var(--ep-ink-muted); }
+
+[data-theme="dark"] .dropdown-menu {
+    background-color: var(--ep-surface);
+    border-color: var(--ep-border);
+    color: var(--ep-ink);
+}
+[data-theme="dark"] .dropdown-item,
+[data-theme="dark"] .dropdown-item-text { color: var(--ep-ink-soft); }
+[data-theme="dark"] .dropdown-item:hover { background: var(--ep-slate-soft); color: var(--ep-ink); }
+
+[data-theme="dark"] .text-danger { color: var(--ep-rose) !important; }
+[data-theme="dark"] .text-success { color: var(--ep-emerald) !important; }
+[data-theme="dark"] .text-warning { color: var(--ep-amber) !important; }
+[data-theme="dark"] .text-secondary { color: var(--ep-slate) !important; }
+[data-theme="dark"] .text-dark { color: var(--ep-ink) !important; }
+
+[data-theme="dark"] .btn-outline-secondary {
+    --bs-btn-color: var(--ep-ink-soft);
+    --bs-btn-border-color: var(--ep-border-strong);
+    --bs-btn-hover-bg: var(--ep-slate-soft);
+    --bs-btn-hover-color: var(--ep-ink);
+    --bs-btn-hover-border-color: var(--ep-border-strong);
+}
+
+/* Alertas en dark */
+[data-theme="dark"] .alert-info { background: rgba(56, 189, 248, .1); border-color: rgba(56, 189, 248, .25); color: #7dd3fc; }
+[data-theme="dark"] .alert-warning { background: rgba(251, 191, 36, .1); border-color: rgba(251, 191, 36, .25); color: #fcd34d; }
+[data-theme="dark"] .alert-danger { background: rgba(251, 113, 133, .1); border-color: rgba(251, 113, 133, .25); color: #fda4af; }
+[data-theme="dark"] .alert-success { background: rgba(16, 185, 129, .1); border-color: rgba(16, 185, 129, .25); color: #6ee7b7; }
+
+/* KPI tints en dark (fondos translúcidos) */
+[data-theme="dark"] .kpi-tickets .kpi-icon { background: rgba(56, 189, 248, .15); color: #7dd3fc; }
+[data-theme="dark"] .kpi-tables .kpi-icon { background: rgba(167, 139, 250, .15); color: #c4b5fd; }
+
+/* Mapas de mesas: cards oscuras con borde superior de color */
+[data-theme="dark"] .table-cell { background: var(--ep-surface); border-color: var(--ep-border); }
+[data-theme="dark"] .table-libre { border-top-color: var(--ep-emerald); }
+[data-theme="dark"] .table-ocupada { border-top-color: var(--ep-rose); }
+[data-theme="dark"] .table-reservada { border-top-color: var(--ep-amber); }
+[data-theme="dark"] .table-limpieza { border-top-color: var(--ep-slate); }
+
+/* POS */
+[data-theme="dark"] .pos-product-card { background: var(--ep-surface); }
+[data-theme="dark"] .pos-cart-sticky { background: var(--ep-surface); }
+
+/* Ticket en dark: la impresión SIEMPRE es clara (ver @media print) */
+[data-theme="dark"] .ticket { background: var(--ep-surface); color: var(--ep-ink); }
+[data-theme="dark"] .ticket-header { background: var(--ep-surface-2); }
+[data-theme="dark"] .ticket-items th { border-bottom-color: var(--ep-ink); color: var(--ep-ink-soft); }
+[data-theme="dark"] .ticket-total { border-top-color: var(--ep-ink); color: var(--ep-emerald); }
+
+/* ==========================================================================
+   RESPONSIVE EXTRA (móvil / tablet)
+   ========================================================================== */
+@media (max-width: 575.98px) {
+    .app-content { padding: .85rem .65rem 1.4rem; }
+    .pos-product-img { height: 74px; font-size: 1.7rem; }
+    .pos-product-price { font-size: .92rem; }
+    .chart-box { height: 220px; }
+    .kpi-value { font-size: 1.4rem; }
+    .cart-item-qty .btn { width: 36px; height: 36px; }
+    #pos-checkout { min-height: 54px; }
+}
+
+@media (max-width: 991.98px) {
+    .pos-cart-sticky { position: static; margin-top: 1rem; }
 }
 
 /* Utilidades */

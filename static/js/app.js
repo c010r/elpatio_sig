@@ -34,6 +34,27 @@
         }
     });
 
+    /* ----------------------------- Toggle de tema claro/oscuro ----------------------------- */
+    var themeToggle = document.getElementById("theme-toggle");
+    if (themeToggle) {
+        var themeIcon = document.getElementById("theme-icon");
+
+        function themeApply(t) {
+            document.documentElement.setAttribute("data-theme", t);
+            try { localStorage.setItem("ep-theme", t); } catch (e) {}
+            if (themeIcon) themeIcon.className = "bi " + (t === "dark" ? "bi-sun" : "bi-moon-stars");
+        }
+
+        // Sincroniza el icono con el tema ya aplicado por el script inline del <head>
+        var initialTheme = document.documentElement.getAttribute("data-theme") || "light";
+        if (themeIcon) themeIcon.className = "bi " + (initialTheme === "dark" ? "bi-sun" : "bi-moon-stars");
+
+        themeToggle.addEventListener("click", function () {
+            var current = document.documentElement.getAttribute("data-theme") || "light";
+            themeApply(current === "dark" ? "light" : "dark");
+        });
+    }
+
     /* ==========================================================================
        POS — Carrito de venta
        ========================================================================== */

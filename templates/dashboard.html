@@ -29,42 +29,42 @@
 
 {# ------------------------- KPIs ------------------------- #}
 <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-4 col-xl-2">
+    <div class="col-12 col-sm-6 col-lg-3 col-xl-2">
         <div class="card kpi-card kpi-sales">
             <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
             <div class="kpi-value">{{ today_sales|default:0|money }}</div>
             <div class="kpi-label">Ventas de hoy</div>
         </div>
     </div>
-    <div class="col-6 col-lg-4 col-xl-2">
+    <div class="col-12 col-sm-6 col-lg-3 col-xl-2">
         <div class="card kpi-card kpi-tickets">
             <div class="kpi-icon"><i class="bi bi-receipt"></i></div>
             <div class="kpi-value">{{ today_tickets|default:0 }}</div>
             <div class="kpi-label">Tickets de hoy</div>
         </div>
     </div>
-    <div class="col-6 col-lg-4 col-xl-2">
+    <div class="col-12 col-sm-6 col-lg-3 col-xl-2">
         <div class="card kpi-card kpi-tables">
             <div class="kpi-icon"><i class="bi bi-egg-fried"></i></div>
             <div class="kpi-value">{{ occupied_tables|default:0 }}</div>
             <div class="kpi-label">Mesas ocupadas</div>
         </div>
     </div>
-    <div class="col-6 col-lg-4 col-xl-2">
+    <div class="col-12 col-sm-6 col-lg-3 col-xl-2">
         <a href="{% url 'inventory:stock_low' %}" class="card kpi-card kpi-stock text-decoration-none">
             <div class="kpi-icon"><i class="bi bi-exclamation-triangle"></i></div>
             <div class="kpi-value {% if low_stock_count %}text-danger{% endif %}">{{ low_stock_count|default:0 }}</div>
             <div class="kpi-label">Stock bajo</div>
         </a>
     </div>
-    <div class="col-6 col-lg-4 col-xl-2">
+    <div class="col-12 col-sm-6 col-lg-3 col-xl-2">
         <a href="{% url 'reservations:reservation_today' %}" class="card kpi-card kpi-reservations text-decoration-none">
             <div class="kpi-icon"><i class="bi bi-calendar-check"></i></div>
             <div class="kpi-value">{{ today_reservations|default:0 }}</div>
             <div class="kpi-label">Reservas de hoy</div>
         </a>
     </div>
-    <div class="col-6 col-lg-4 col-xl-2">
+    <div class="col-12 col-sm-6 col-lg-3 col-xl-2">
         {% if open_cash_register %}
         <a href="{% url 'sales:cash_register_close' %}" class="card kpi-card kpi-cash-open text-decoration-none">
             <div class="kpi-icon"><i class="bi bi-unlock"></i></div>
