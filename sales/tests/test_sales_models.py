@@ -147,9 +147,11 @@ def test_completar_venta_sin_items_rechazada(cajero_user, open_cash_register):
         Sale.complete_sale(user=cajero_user, items=[])
 
 
-def test_completar_venta_efectivo_sin_efectivo_recibido(product, cajero_user, open_cash_register):
-    with pytest.raises(ValidationError):
-        _completar_venta(product, cajero_user, open_cash_register)
+def test_completar_venta_efectivo_sin_efectivo_recibido_es_pago_exacto(product, cajero_user, open_cash_register):
+    # "Efectivo recibido" opcional: sin indicarlo se asume pago exacto.
+    sale = _completar_venta(product, cajero_user, open_cash_register)
+    assert sale.cash_received == sale.total
+    assert sale.change == Decimal("0")
 
 
 def test_completar_venta_efectivo_insuficiente(product, cajero_user, open_cash_register):

@@ -365,8 +365,10 @@ class Sale(models.Model):
         sale.total = subtotal - discount + tip
 
         if payment_method == cls.PaymentMethod.EFECTIVO:
+            # "Efectivo recibido" es opcional: si no se indica, se asume pago
+            # exacto (recibido = total, vuelto = 0).
             if cash_received is None:
-                raise ValidationError("Para pagos en efectivo hay que indicar el efectivo recibido.")
+                cash_received = sale.total
             if cash_received < sale.total:
                 raise ValidationError("El efectivo recibido es menor al total.")
             sale.cash_received = cash_received
