@@ -47,6 +47,11 @@ class Product(models.Model):
     stock_min = models.DecimalField("stock mínimo", max_digits=10, decimal_places=2, default=0)
     barcode = models.CharField("código de barras", max_length=50, unique=True, null=True, blank=True)
     image = models.ImageField("imagen", upload_to="products/", null=True, blank=True)
+    promo_price = models.DecimalField(
+        "precio promo", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Precio promocional (se usa si promo activa; no se acumula con happy hour).",
+    )
+    promo_active = models.BooleanField("promo activa", default=False)
     is_active = models.BooleanField("activo", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -54,6 +59,14 @@ class Product(models.Model):
         verbose_name = "producto"
         verbose_name_plural = "productos"
         ordering = ["name"]
+        constraints = [
+            # F2-12: si la promo está activa, el precio promo debe existir y ser > 0.
+            models.CheckConstraint(
+                condition=models.Q(promo_active=False)
+                | models.Q(promo_price__isnull=False, promo_price__gt=0),
+                name="promo_active_requires_price",
+            ),
+        ]
 
     def __str__(self):
         return self.name

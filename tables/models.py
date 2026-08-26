@@ -85,7 +85,7 @@ class Order(models.Model):
 
     @transaction.atomic
     def close_to_sale(self, *, user, payment_method="efectivo", cash_received=None,
-                      cash_register=None, discount=Decimal("0")):
+                      cash_register=None, discount=Decimal("0"), tip=Decimal("0")):
         """Cierra la comanda generando una Sale ligada a la mesa.
 
         Cobra los ítems con estado 'entregado', descuenta stock (vía
@@ -110,6 +110,7 @@ class Order(models.Model):
             payment_method=payment_method,
             cash_received=cash_received,
             discount=discount,
+            tip=tip,
         )
         order.status = Order.Status.PAGADA
         order.closed_at = timezone.now()

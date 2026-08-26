@@ -94,6 +94,12 @@ def sales_report(request):
         .annotate(total=Sum("total"), count=Count("id"))
         .order_by("payment_method")
     )
+    # Series para Chart.js: donut de métodos de pago + totales por día.
+    payment_labels_map = dict(Sale.PaymentMethod.choices)
+    chart_payment_labels = [payment_labels_map.get(r["payment_method"], r["payment_method"]) for r in by_payment]
+    chart_payment_data = [float(r["total"] or 0) for r in by_payment]
+    chart_labels = [row["period"] for row in rows]
+    chart_data = [float(row["total"]) for row in rows]
     by_user = list(
         sales.values("user__username")
         .annotate(total=Sum("total"), count=Count("id"))
@@ -125,6 +131,10 @@ def sales_report(request):
             "by_payment": by_payment,
             "by_user": by_user,
             "orders_by_table": orders_by_table,
+            "chart_labels": chart_labels,
+            "chart_data": chart_data,
+            "chart_payment_labels": chart_payment_labels,
+            "chart_payment_data": chart_payment_data,
         },
     )
 
@@ -140,7 +150,7 @@ def sales_report_csv(request):
     response = _csv_response(f"ventas_{start}_{end}.csv")
     writer = csv.writer(response)
     writer.writerow(
-        ["Ticket", "Fecha", "Vendedor", "Mesa", "Cliente", "Método", "Subtotal", "Descuento", "Total", "Estado"]
+        ["Ticket", "Fecha", "Vendedor", "Mesa", "Cliente", "Método", "Subtotal", "Descuento", "Propina", "Total", "Estado"]
     )
     for s in sales:
         writer.writerow(
@@ -153,6 +163,7 @@ def sales_report_csv(request):
                 safe_cell(s.payment_method),
                 s.subtotal,
                 s.discount,
+                s.tip,
                 s.total,
                 safe_cell(s.status),
             ]
@@ -186,6 +197,9 @@ def products_report(request):
         .annotate(qty=Sum("quantity"), revenue=Sum("subtotal"))
         .order_by("-qty")[:top]
     ]
+    # Series para Chart.js (top productos por ingresos).
+    chart_labels = [row["product"] for row in rows]
+    chart_data = [float(row["revenue"] or 0) for row in rows]
     return render(
         request,
         "reports/products_report.html",
@@ -196,6 +210,8 @@ def products_report(request):
             "rows": rows,
             "total_quantity": totals["total_quantity"] or Decimal("0"),
             "total_revenue": totals["total_revenue"] or Decimal("0"),
+            "chart_labels": chart_labels,
+            "chart_data": chart_data,
         },
     )
 
@@ -255,6 +271,16 @@ def profit_report(request):
     total_revenue = sum(r["revenue"] or 0 for r in rows)
     total_cost = sum(r["cost"] or 0 for r in rows)
     total_profit = total_revenue - total_cost
+
+    # Series para Chart.js: ganancia por día.
+    by_day = (
+        items.values("sale__created_at__date")
+        .annotate(profit=Sum(F("subtotal") - F("quantity") * F("product__purchase_price")))
+        .order_by("sale__created_at__date")
+    )
+    chart_labels = [row["sale__created_at__date"].strftime("%d/%m/%Y") for row in by_day]
+    chart_data = [float(row["profit"] or 0) for row in by_day]
+
     return render(
         request,
         "reports/profit_report.html",
@@ -265,6 +291,8 @@ def profit_report(request):
             "total_revenue": total_revenue,
             "total_cost": total_cost,
             "total_profit": total_profit,
+            "chart_labels": chart_labels,
+            "chart_data": chart_data,
         },
     )
 
@@ -326,6 +354,9 @@ def inventory_value_report(request):
     )
     total_value = sum(r["value"] or 0 for r in by_category)
     product_count = Product.objects.filter(is_active=True).count()
+    # Series para Chart.js (barras por categoría).
+    chart_labels = [r["category__name"] for r in by_category]
+    chart_data = [float(r["value"] or 0) for r in by_category]
     return render(
         request,
         "reports/inventory_value_report.html",
@@ -334,6 +365,8 @@ def inventory_value_report(request):
             "by_category": by_category,
             "total_value": total_value,
             "product_count": product_count,
+            "chart_labels": chart_labels,
+            "chart_data": chart_data,
         },
     )
 

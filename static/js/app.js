@@ -40,16 +40,21 @@
     var posForm = document.getElementById("pos-form");
     if (posForm) {
         var cfg = window.POS_CONFIG || {
-            currency: "$",
+            currency: "$U ",
             emptyCartMessage: "El carrito está vacío. Agregá productos para cobrar.",
-            exceedingStockMessage: "Stock insuficiente para el producto «{name}». Disponible: {stock}."
+            exceedingStockMessage: "Stock insuficiente para el producto «{name}». Disponible: {stock}.",
+            discountExceedsMessage: "El descuento no puede superar el subtotal ({max})."
         };
 
         var cart = {}; // { productId: {name, price, priceDisplay, stock, qty} }
 
         var cartItemsEl = document.getElementById("cart-items");
         var cartTotalEl = document.getElementById("cart-total");
+        var cartSubtotalEl = document.getElementById("cart-subtotal");
+        var cartDiscountLineEl = document.getElementById("cart-discount-line");
+        var cartTipLineEl = document.getElementById("cart-tip-line");
         var discountEl = document.getElementById("pos-discount");
+        var tipEl = document.getElementById("pos-tip");
         var cashEl = document.getElementById("pos-cash");
         var cashRowEl = document.getElementById("cash-row");
         var paymentEl = document.getElementById("pos-payment");
@@ -78,9 +83,19 @@
             return total;
         }
 
+        function discountValue() {
+            return parseFloat(discountEl ? discountEl.value : 0) || 0;
+        }
+
+        function tipValue() {
+            return parseFloat(tipEl ? tipEl.value : 0) || 0;
+        }
+
+        // Total final = subtotal - descuento + propina (nunca negativo)
         function netTotal() {
-            var discount = parseFloat(discountEl ? discountEl.value : 0) || 0;
-            return Math.max(0, cartTotal() - discount);
+            var subtotal = cartTotal();
+            var discount = Math.min(discountValue(), subtotal);
+            return Math.max(0, subtotal - discount) + tipValue();
         }
 
         function updateChange() {
@@ -125,6 +140,13 @@
                 }).join("");
             }
 
+            var subtotal = cartTotal();
+            var discount = Math.min(discountValue(), subtotal);
+            var tip = tipValue();
+
+            if (cartSubtotalEl) cartSubtotalEl.textContent = fmt(subtotal);
+            if (cartDiscountLineEl) cartDiscountLineEl.textContent = "-" + fmt(discount);
+            if (cartTipLineEl) cartTipLineEl.textContent = fmt(tip);
             if (cartTotalEl) cartTotalEl.textContent = fmt(netTotal());
             updateChange();
         }
@@ -198,12 +220,26 @@
             });
         }
 
-        // Recalcular al cambiar método de pago / efectivo / descuento
+        // Botones rápidos de propina (10/15/20% sobre el subtotal, o "sin")
+        document.querySelectorAll(".tip-btn").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                var pct = parseFloat(btn.getAttribute("data-tip-percent")) || 0;
+                if (pct > 0) {
+                    var subtotal = cartTotal();
+                    var tip = Math.round(subtotal * pct) / 100;
+                    tipEl.value = tip.toFixed(2);
+                } else {
+                    tipEl.value = "";
+                }
+                render();
+            });
+        });
+
+        // Recalcular al cambiar método de pago / efectivo / descuento / propina
         if (paymentEl) paymentEl.addEventListener("change", updateChange);
         if (cashEl) cashEl.addEventListener("input", updateChange);
-        if (discountEl) discountEl.addEventListener("input", function () {
-            render();
-        });
+        if (discountEl) discountEl.addEventListener("input", render);
+        if (tipEl) tipEl.addEventListener("input", render);
 
         // Envío del formulario: arma los inputs ocultos product_id[] / quantity[]
         posForm.addEventListener("submit", function (e) {
@@ -215,6 +251,14 @@
             }
             if (checkoutBtn && checkoutBtn.disabled) {
                 e.preventDefault();
+                return;
+            }
+            // Validar descuento: 0 <= discount <= subtotal (el backend re-valida)
+            var subtotal = cartTotal();
+            var discount = discountValue();
+            if (discount > subtotal) {
+                e.preventDefault();
+                window.alert(cfg.discountExceedsMessage.replace("{max}", fmt(subtotal)));
                 return;
             }
             // Quitar inputs ocultos previos (por si se reenvía)
@@ -249,5 +293,74 @@
                 card.closest(".col-6, .col-md-4, .col-xl-3, [class*='col-']").style.display = show ? "" : "none";
             });
         });
+    }
+
+    /* ==========================================================================
+       ARQUEO DE CAJA (cash_register_close) — esperado vs contado por método
+       ========================================================================== */
+    var cashCountTable = document.getElementById("cash-count-table");
+    if (cashCountTable) {
+        var confirmWrap = document.getElementById("confirm-diff-wrap");
+        var confirmCheck = document.getElementById("id_confirm_difference");
+        var closeForm = document.getElementById("cash-close-form");
+        var countRows = cashCountTable.querySelectorAll('tbody tr[data-method][data-expected]');
+
+        function fmtUYU(value) {
+            var n = Number(value || 0);
+            var neg = n < 0;
+            var fixed = Math.abs(n).toFixed(2);
+            var parts = fixed.split(".");
+            var intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            return (neg ? "-" : "") + "$U " + intPart + "," + parts[1];
+        }
+
+        function parseNum(v) {
+            var n = parseFloat(v);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function updateCounts() {
+            var totalExpected = 0;
+            var totalCounted = 0;
+            countRows.forEach(function (row) {
+                var expected = parseNum(row.getAttribute("data-expected"));
+                var input = row.querySelector('input[type="number"]');
+                var counted = input ? parseNum(input.value) : 0;
+                var diff = counted - expected;
+                totalExpected += expected;
+                totalCounted += counted;
+                var cell = row.querySelector(".diff-cell");
+                if (cell) {
+                    cell.textContent = fmtUYU(diff);
+                    cell.className = "text-end diff-cell " + (Math.abs(diff) < 0.005 ? "diff-zero" : (diff < 0 ? "diff-negative" : "diff-positive"));
+                }
+            });
+            var diffTotal = totalCounted - totalExpected;
+            var totalCell = cashCountTable.querySelector(".diff-total");
+            if (totalCell) {
+                totalCell.textContent = fmtUYU(diffTotal);
+                totalCell.className = "text-end diff-total " + (Math.abs(diffTotal) < 0.005 ? "diff-zero" : (diffTotal < 0 ? "diff-negative" : "diff-positive"));
+            }
+            var hasDiff = Math.abs(diffTotal) >= 0.005;
+            if (confirmWrap) confirmWrap.style.display = hasDiff ? "" : "none";
+            if (confirmCheck) confirmCheck.checked = false;
+            return hasDiff;
+        }
+
+        cashCountTable.addEventListener("input", function (e) {
+            if (e.target.matches('input[type="number"]')) updateCounts();
+        });
+
+        if (closeForm) {
+            closeForm.addEventListener("submit", function (e) {
+                var hasDiff = updateCounts();
+                if (hasDiff && (!confirmCheck || !confirmCheck.checked)) {
+                    e.preventDefault();
+                    window.alert("Hay diferencia entre lo esperado y lo contado. Marcá la confirmación para cerrar la caja.");
+                }
+            });
+        }
+
+        updateCounts();
     }
 })();

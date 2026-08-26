@@ -2,7 +2,7 @@
 customers — Vistas de clientes, detalle con historial y canje de puntos.
 """
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import F, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
@@ -111,15 +111,20 @@ class CustomerRedeemView(RoleRequiredMixin, View):
     def post(self, request, pk):
         customer = get_object_or_404(Customer, pk=pk, is_active=True)
         config = LoyaltyConfig.get_solo()
-        if customer.points < config.points_required_for_discount:
+        # F2-10: el canje valida ANTES de descontar (update atómico con guarda
+        # de puntos suficientes; no se pierden puntos si la venta luego se
+        # rechaza por el tope de descuento).
+        updated = Customer.objects.filter(
+            pk=customer.pk, is_active=True, points__gte=config.points_required_for_discount
+        ).update(points=F("points") - config.points_required_for_discount)
+        if not updated:
             messages.error(
                 request,
                 f"El cliente tiene {customer.points} puntos y necesita "
                 f"{config.points_required_for_discount} para canjear.",
             )
             return redirect("customers:customer_detail", pk=customer.pk)
-        customer.points -= config.points_required_for_discount
-        customer.save(update_fields=["points"])
+        customer.refresh_from_db()
         request.session["redeemed_discount"] = str(config.discount_amount)
         request.session["redeemed_customer_id"] = customer.pk
         messages.success(

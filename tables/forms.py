@@ -6,7 +6,7 @@ from decimal import Decimal
 from django import forms
 
 from inventory.models import Product
-from sales.models import Sale
+from sales.models import Sale, effective_price
 
 from .models import Order, OrderItem, Table
 
@@ -40,7 +40,11 @@ class OrderForm(forms.ModelForm):
 
 
 class OrderItemForm(forms.ModelForm):
-    """Agrega un ítem a una comanda (toma el precio de venta del producto)."""
+    """Agrega un ítem a una comanda.
+
+    El precio se CONGELA al agregar el ítem usando `effective_price()`
+    (promo > happy hour > precio regular).
+    """
 
     class Meta:
         model = OrderItem
@@ -59,14 +63,14 @@ class OrderItemForm(forms.ModelForm):
 
     def save(self, commit=True):
         item = super().save(commit=False)
-        item.unit_price = item.product.sale_price
+        item.unit_price = effective_price(item.product)
         if commit:
             item.save()
         return item
 
 
 class OrderCloseForm(forms.Form):
-    """Cobro y cierre de comanda."""
+    """Cobro y cierre de comanda (descuento y propina se validan server-side)."""
 
     payment_method = forms.ChoiceField(
         label="Método de pago",
@@ -79,6 +83,9 @@ class OrderCloseForm(forms.Form):
     discount = forms.DecimalField(
         label="Descuento", max_digits=10, decimal_places=2, required=False, initial=Decimal("0")
     )
+    tip = forms.DecimalField(
+        label="Propina", max_digits=10, decimal_places=2, required=False, initial=Decimal("0")
+    )
 
     def clean(self):
         cleaned = super().clean()
@@ -87,4 +94,10 @@ class OrderCloseForm(forms.Form):
             and cleaned.get("cash_received") is None
         ):
             self.add_error("cash_received", "Indicá el efectivo recibido para pagos en efectivo.")
+        discount = cleaned.get("discount") or Decimal("0")
+        tip = cleaned.get("tip") or Decimal("0")
+        if discount < 0:
+            self.add_error("discount", "El descuento no puede ser negativo.")
+        if tip < 0:
+            self.add_error("tip", "La propina no puede ser negativa.")
         return cleaned

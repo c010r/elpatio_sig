@@ -8,7 +8,6 @@ Matriz de permisos del contrato:
 - Bartender: NO accede a ventas/caja.
 - Anónimo: redirect a login.
 """
-import json
 from decimal import Decimal
 
 import pytest
@@ -90,11 +89,12 @@ def test_cerrar_caja(client_cajero, open_cash_register):
 
 def test_pos_checkout_crea_venta_y_descuenta_stock(client_cajero, product, open_cash_register):
     stock_inicial = product.stock_current
-    # SaleForm real: `items` es JSON con el carrito [{product_id, quantity}].
+    # Formato canónico del POS final: arrays product_id[] / quantity[].
     response = client_cajero.post(
         reverse("sales:pos"),
         {
-            "items": json.dumps([{"product_id": product.id, "quantity": 2}]),
+            "product_id": [str(product.id)],
+            "quantity": ["2"],
             "payment_method": "efectivo",
             "cash_received": "400.00",
         },
@@ -103,6 +103,21 @@ def test_pos_checkout_crea_venta_y_descuenta_stock(client_cajero, product, open_
     assert Sale.objects.count() == 1
     product.refresh_from_db()
     assert product.stock_current == stock_inicial - Decimal("2")
+
+
+def test_pos_carrito_incompleto_rechazado(client_cajero, product, open_cash_register):
+    """product_id[] y quantity[] desparejados → error (no crea venta)."""
+    response = client_cajero.post(
+        reverse("sales:pos"),
+        {
+            "product_id": [str(product.id), str(product.id)],
+            "quantity": ["1"],
+            "payment_method": "efectivo",
+            "cash_received": "200.00",
+        },
+    )
+    assert response.status_code == 302  # redirect con mensaje de error
+    assert Sale.objects.count() == 0
 
 
 def test_sale_void_gerente_anula(client_gerente, product, cajero_user, open_cash_register):

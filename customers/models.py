@@ -4,6 +4,7 @@ customers — Modelos de clientes y configuración de fidelización.
 from decimal import Decimal
 
 from django.core.cache import cache
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import F
 
@@ -48,6 +49,11 @@ class LoyaltyConfig(models.Model):
     points_required_for_discount = models.PositiveIntegerField("puntos para descuento", default=100)
     discount_amount = models.DecimalField(
         "monto del descuento", max_digits=10, decimal_places=2, default=Decimal("10")
+    )
+    max_discount_percent = models.PositiveIntegerField(
+        "descuento manual máximo (%)", default=50,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Tope del descuento manual sobre el subtotal (0-100).",
     )
 
     class Meta:

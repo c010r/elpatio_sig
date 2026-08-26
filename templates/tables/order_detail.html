@@ -38,6 +38,17 @@
     </div>
 </div>
 
+{# --- Banner de happy hour (contexto `happy_hour` del backend) --- #}
+{% if happy_hour and happy_hour.active %}
+<div class="alert happy-hour-banner d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span>
+        🍺 <strong>Happy hour{% if happy_hour.name %} {{ happy_hour.name }}{% endif %}: {{ happy_hour.discount_percent }}% OFF</strong>
+        {% if happy_hour.until %}(hasta {{ happy_hour.until }}){% endif %}
+    </span>
+    <span class="small text-muted">Se aplica automáticamente a precios regulares · no acumula con promos</span>
+</div>
+{% endif %}
+
 <div class="row g-3">
     <div class="col-lg-8">
         <div class="card shadow-sm">

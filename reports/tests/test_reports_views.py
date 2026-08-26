@@ -55,6 +55,81 @@ def test_reporte_ventas_muestra_moneda_uyu(client_gerente, product, cajero_user,
     assert "USD" not in content
 
 
+# ---------------------------------------------------------------------------
+# Fase 2: series para gráficos (Chart.js) en el contexto
+# ---------------------------------------------------------------------------
+
+def test_sales_report_context_chart_keys(client_gerente, product, cajero_user, open_cash_register):
+    from decimal import Decimal
+
+    from sales.models import Sale
+
+    Sale.complete_sale(
+        user=cajero_user,
+        items=[(product, Decimal("1"))],
+        cash_register=open_cash_register,
+        cash_received=Decimal("200"),
+    )
+    response = client_gerente.get(reverse("reports:sales_report"))
+    assert response.status_code == 200
+    ctx = response.context
+    assert "chart_labels" in ctx
+    assert "chart_data" in ctx
+    assert "chart_payment_labels" in ctx
+    assert len(ctx["chart_labels"]) == len(ctx["chart_data"])
+    assert isinstance(ctx["chart_labels"], list)
+
+
+def test_products_report_context_chart_keys(client_gerente, product, cajero_user, open_cash_register):
+    from decimal import Decimal
+
+    from sales.models import Sale
+
+    Sale.complete_sale(
+        user=cajero_user,
+        items=[(product, Decimal("1"))],
+        cash_register=open_cash_register,
+        cash_received=Decimal("200"),
+    )
+    response = client_gerente.get(reverse("reports:products_report"))
+    assert response.status_code == 200
+    ctx = response.context
+    assert "chart_labels" in ctx
+    assert "chart_data" in ctx
+    assert len(ctx["chart_labels"]) == len(ctx["chart_data"])
+    assert isinstance(ctx["chart_labels"], list)
+
+
+def test_profit_report_context_chart_keys(client_gerente, product, cajero_user, open_cash_register):
+    from decimal import Decimal
+
+    from sales.models import Sale
+
+    Sale.complete_sale(
+        user=cajero_user,
+        items=[(product, Decimal("1"))],
+        cash_register=open_cash_register,
+        cash_received=Decimal("200"),
+    )
+    response = client_gerente.get(reverse("reports:profit_report"))
+    assert response.status_code == 200
+    ctx = response.context
+    assert "chart_labels" in ctx
+    assert "chart_data" in ctx
+    assert len(ctx["chart_labels"]) == len(ctx["chart_data"])
+    assert isinstance(ctx["chart_labels"], list)
+
+
+def test_inventory_value_report_context(client_gerente, product):
+    """El reporte de valor de inventario expone filas/total (sin series de gráfico)."""
+    response = client_gerente.get(reverse("reports:inventory_value_report"))
+    assert response.status_code == 200
+    ctx = response.context
+    for key in ("rows", "by_category", "total_value", "product_count"):
+        assert key in ctx
+    assert ctx["product_count"] == 1
+
+
 @pytest.mark.parametrize("url_name", REPORT_URLS)
 def test_reporte_admin_200(client_admin, url_name):
     assert client_admin.get(reverse(f"reports:{url_name}")).status_code == 200

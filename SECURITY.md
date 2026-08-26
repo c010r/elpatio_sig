@@ -393,13 +393,30 @@ audit.info("rol_cambiado por=%s a_usuario=%s grupo=%s", ...)
 Formato: `evento clave=valor ...` (grep-friendly). **Prohibido** loguear passwords,
 tokens, datos de tarjetas o DNI completos.
 
-### 6.6 SEC-09 — Bootstrap con SRI (FRONTEND)
+### 6.6 SEC-09 — Bootstrap con SRI (FRONTEND) y Chart.js (estado)
 
-En `templates/base.html` reemplazar `{% bootstrap_css %}`/`{% bootstrap_javascript %}`
-por `<link>`/`<script>` propios con `integrity` + `crossorigin="anonymous"` (generar
-hash con `openssl dgst -sha384`), o **self-hostear** los assets en `static/` (mejor:
-sin dependencia de terceros en producción). Coordinar con el ajuste de
-`BOOTSTRAP5` en base.py:156-158.
+**Chart.js — ✔ APLICADO (Fase 2):** los 4 templates de reportes
+(`templates/reports/*.html`) ya incluyen el script de Chart.js v4.4.9 con
+`integrity="sha512-Nq18NiUbU5CwGkebYDTqV0hQG80DQH4t0RZvT2D3nmVYrAADGnDmuL9ON2H7c26mcN3otYEqESvERA7schji+g=="`
++ `crossorigin="anonymous"` (hash SHA-512 verificado por el coordinador de
+seguridad).
+
+**Decisión self-host (documentada):** se intentó descargar
+`chart.umd.min.js` 4.4.9 a `static/vendor/chart.js/` para eliminarla del CDN,
+pero el entorno de build no tiene salida a internet. **Queda como follow-up
+recomendado** (postura más fuerte que SRI: cero dependencia de terceros en
+producción, sin SRI que mantener): descargar el archivo desde
+`https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js`, verificar
+que su SHA-512 coincida con el hash de arriba, guardarlo en
+`static/vendor/chart.js/chart.umd.min.js` y reemplazar el `<script>` del CDN por
+`<script src="{% static 'vendor/chart.js/chart.umd.min.js' %}"></script>` en los
+4 reportes (agregando `{% load static %}`).
+
+**Bootstrap — 🔴 PENDIENTE (frontend):** en `templates/base.html` reemplazar
+`{% bootstrap_css %}`/`{% bootstrap_javascript %}` por `<link>`/`<script>` propios
+con `integrity` + `crossorigin="anonymous"` (hash con `openssl dgst -sha384`), o
+**self-hostear** los assets en `static/` (mejor: sin dependencia de terceros en
+producción). Coordinar con el ajuste de `BOOTSTRAP5` en base.py:156-158.
 
 ### 6.7 SEC-05 — Fuerza bruta (DEPLOY; NO instalar ahora)
 
@@ -495,6 +512,81 @@ Django — ver §5.14/§6.9):**
 
 Criterio de severidad: OWASP (Impacto × Probabilidad) ajustado al contexto de pub
 (terminal compartida, dinero físico en caja, datos personales de clientes AR).
+
+---
+
+## 8. Hallazgos Fase 2 (revisión de la implementación del backend)
+
+Revisados: `sales/models.py`, `sales/views.py`, `sales/forms.py`,
+`inventory/models.py`, `inventory/forms.py`, `reports/views.py`,
+`accounts/views.py`, `accounts/forms.py`, `customers/models.py`,
+`customers/views.py` y `templates/reports/*.html`.
+
+### 8.1 Estado de hallazgos SEC-xx tras la implementación
+
+| ID | Estado |
+|---|---|
+| SEC-02 (fórmulas CSV) | ✔ **Aplicado**: `safe_cell()` en `reports/views.py:39-49` y en los 4 CSV. Pendiente menor: columna `Tip` (ver F2-14) |
+| SEC-03 (ticket race) | ✔ **Aplicado** con reintento ante `IntegrityError` + `unique=True` (`sales/models.py:262-317`). OK para el bar; si hubiera picos extremos de concurrencia, pasar a secuencia de DB (F2-09) |
+| SEC-07 (IDOR) | 🟡 **Parcial**: roles a nivel de módulo OK en todas las apps; **faltan** chequeos a nivel de objeto (anulación de venta ajena F2-06, caja F2-05/F2-07, usuarios F2-02) |
+| SEC-08 (auditoría) | 🟡 **Infraestructura lista** (logger `audit`); **no se emiten eventos** todavía en accounts ni en anulaciones (F2-03, F2-06) |
+| SEC-10 (caja única) | 🔴 **Pendiente**: el check de apertura no es atómico (F2-07) |
+| SEC-09 (SRI) | 🟡 Chart.js ✔ (Fase 2, §6.6); Bootstrap CDN sigue pendiente (frontend) |
+
+### 8.2 Hallazgos nuevos (F2-xx)
+
+**Prioridad 1 — accounts (superficie de administración):**
+
+| ID | Severidad | Hallazgo | Referencia | Acción (backend) |
+|---|---|---|---|---|
+| **F2-01** | **Alta** | La creación de usuarios **no valida la contraseña** contra `AUTH_PASSWORD_VALIDATORS` → se pueden crear usuarios con "1234" (bypass de la política de contraseñas, SEC-05.7) | accounts/forms.py:11-25 | En `clean_password`: `from django.contrib.auth.password_validation import validate_password; validate_password(value)` |
+| **F2-02** | **Alta** | Un admin puede **desactivar/demotar a otro admin o a sí mismo**, dejando el sistema sin ningún administrador activo (lockout total, DoS de administración); sin registro en auditoría | accounts/views.py:49-60 (toggle), 37-46 (update) | Bloquear auto-desactivación y la desactivación/democión del **último** admin activo (`is_superuser` o grupo `admin`); emitir evento `audit` |
+| **F2-03** | **Media** | Sin eventos de auditoría en crear/editar/toggle usuario ni en cambios de grupo (SEC-08 no aplicado acá) | accounts/views.py | `audit.info("usuario_creado por=%s usuario=%s grupo=%s", ...)` en form_valid/post |
+| **F2-04** | **Baja** | `groups.set([grupo])` **reemplaza todos** los grupos del usuario (pérdida de roles múltiples si se usan) | accounts/forms.py:24,46 | Conservar grupos existentes o manejar multi-grupo explícito |
+
+**Prioridad 2 — ventas / caja:**
+
+| ID | Severidad | Hallazgo | Referencia | Acción (backend) |
+|---|---|---|---|---|
+| **F2-05** | **Alta** | El POS permite cobrar **sin caja abierta** (`cash_register=None`) → esas ventas quedan **fuera del arqueo esperado** (dinero no rastreado; hueco de fraude) | sales/views.py:121 (PosView) | Bloquear el cobro si no hay caja abierta (o exigir confirmación explícita + evento `audit`) |
+| **F2-06** | **Alta** | **Cualquier cajero puede anular cualquier venta** (de otro cajero) y el motivo es opcional (SEC-07 a nivel de objeto sin aplicar) | sales/views.py:183-197 (SaleVoidView) | Solo el autor o `gerente/admin`; `void_reason` obligatorio; evento `audit` |
+| **F2-07** | **Media** | Apertura de caja con check **no atómico** (dos terminales a la vez → dos cajas abiertas; SEC-10 sigue pendiente) | sales/views.py:206-217 + sales/forms.py:18-24 | `select_for_update()` sobre la caja abierta dentro de `transaction.atomic()` (spec §6.4) |
+| **F2-08** | **Media** | Montos contados del arqueo **sin tope superior** ("absurdos"); solo se rechazan negativos | sales/forms.py:59-64 | Tope de cordura por método (p. ej. esperado × factor + apertura) o tope absoluto configurable; la confirmación de diferencia sigue siendo obligatoria |
+| **F2-09** | **Baja** | Reintento de ticket x10 ante colisión: suficiente para el bar; documentar límite | sales/models.py:302-317 | (información) Si hubiera picos extremos, usar secuencia de DB |
+| **F2-10** | **Baja** | Canje de puntos: se **deducen puntos antes** de saber si el descuento final pasa el tope (descuento manual + canje > max% → venta rechazada y puntos perdidos) | customers/views.py:121-124 + sales/views.py:127-131 | Validar el tope antes de deducir, o aplicar el canje dentro de la transacción de la venta |
+
+**Prioridad 3 — happy hour / promo / configuración:**
+
+| ID | Severidad | Hallazgo | Referencia | Acción |
+|---|---|---|---|---|
+| **F2-11** | **Media** | **No existe vista para editar** `HappyHourConfig` (el contrato exige "solo admin/gerente"); y el modelo no valida `discount_percent` 0-100 | sales/models.py:17-47 | Al implementar la vista de edición: `role_required("gerente","admin")`, validar `0 <= discount_percent <= 100`, y aprovechar el borrado de caché ya presente en `save()` |
+| **F2-12** | **Media** | `promo_price`/`promo_active` sin constraints a nivel modelo (la validación vive solo en el form): una escritura fuera del form (shell, migración, API) puede dejar `promo_price <= 0` o `promo_active=True` sin precio → precios negativos/gratis | inventory/models.py:50-54 + inventory/forms.py:36-48 | `CheckConstraint` en `Meta` (`promo_price > 0`; `promo_active → promo_price IS NOT NULL`), defensa en profundidad |
+| **F2-13** | **Baja** | `LoyaltyConfig.max_discount_percent` sin `MaxValueValidator(100)`; `discount_amount` sin validators (hoy solo editables por shell) | customers/models.py:48-55 | Agregar validators al crear las vistas de configuración |
+
+**Prioridad 4 — reportes / CSV:**
+
+| ID | Severidad | Hallazgo | Referencia | Acción |
+|---|---|---|---|---|
+| **F2-14** | **Media** | `sales_report_csv` **no incluye la columna `Tip`** (campo nuevo de Fase 2); el resto de columnas nuevas están y `safe_cell` se aplica ✔ | reports/views.py:152-169 | Agregar columna "Propina" entre Descuento y Total (valor numérico, sin sanitizar) |
+| **F2-15** | Info | Verificado: `safe_cell` aplicado en los 4 CSV ✔; fechas de `_date_range` estrictamente parseadas ✔; nombres de archivo sin inyección ✔ | reports/views.py | — |
+
+### 8.3 Confirmado OK (sin acción requerida)
+
+- **Recalculo 100% server-side** en `Sale.complete_sale` (`sales/models.py:274-376`):
+  precios vía `effective_price()` (promo > happy hour > regular), subtotal derivado
+  de los ítems, descuento validado (≥0, ≤ subtotal, ≤ max%), propina ≥0,
+  `cash_received ≥ total` en efectivo. El total enviado por el cliente **nunca se
+  confía**. ✔
+- **Happy hour con hora del SERVIDOR**: `is_happy_hour_active()` usa
+  `timezone.localtime()` (`sales/models.py:50-63`); el cliente no puede influir. ✔
+- **Promo validada en el form** (`inventory/forms.py:36-48`): `promo_price > 0` y
+  `promo_active` exige precio. ✔ (queda el refuerzo a nivel modelo, F2-12)
+- **Arqueo**: negativos rechazados; la diferencia se recalcula server-side y exige
+  confirmación si ≠ 0 (`sales/forms.py:59-76`). ✔ (falta tope superior, F2-08)
+- **Roles por módulo coherentes** con el contrato (reportes/accounts/reservas
+  gerente-admin; inventario gerente-admin + ver stock para bartender/cajero;
+  ventas cajero+; mesas bartender/camarero; compras gerente-admin). ✔
+- Series de gráficos vía `json_script` (escapado) ✔; sin `|safe` nuevo en reportes ✔.
 
 ---
 

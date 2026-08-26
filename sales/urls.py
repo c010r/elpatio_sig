@@ -14,4 +14,5 @@ urlpatterns = [
     path("ventas/<int:pk>/anular/", views.SaleVoidView.as_view(), name="sale_void"),
     path("caja/abrir/", views.CashRegisterOpenView.as_view(), name="cash_register_open"),
     path("caja/cerrar/", views.CashRegisterCloseView.as_view(), name="cash_register_close"),
+    path("happy-hour/", views.HappyHourConfigView.as_view(), name="happy_hour_config"),
 ]

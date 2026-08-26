@@ -25,6 +25,10 @@
                     <img src="{{ object.image.url }}" alt="{{ object.name }}" class="img-thumbnail" style="max-height: 140px;">
                 </div>
                 {% endif %}
+                <div class="alert alert-info small py-2">
+                    💡 <strong>Promo:</strong> si activás «promo activa» y cargás un <strong>precio de promoción</strong>,
+                    ese precio se usa en el POS y las comandas. La promo <strong>no se acumula</strong> con el happy hour.
+                </div>
                 <form method="post" enctype="multipart/form-data" novalidate>
                     {% csrf_token %}
                     {% bootstrap_form form %}
@@ -37,4 +41,21 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    // Muestra/oculta el precio de promoción según el checkbox "promo activa"
+    var promoActive = document.getElementById("id_promo_active");
+    var promoPrice = document.getElementById("id_promo_price");
+    if (!promoActive || !promoPrice) return;
+    var priceWrap = promoPrice.closest(".mb-3") || promoPrice.parentNode;
+    function sync() {
+        priceWrap.style.display = promoActive.checked ? "" : "none";
+    }
+    promoActive.addEventListener("change", sync);
+    sync();
+})();
+</script>
 {% endblock %}

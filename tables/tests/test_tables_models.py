@@ -49,6 +49,16 @@ def test_table_numero_unico(table):
         Table.objects.create(number=1, capacity=4, zone="salón")
 
 
+def test_open_order_property(table, bartender_user, product):
+    """Table.open_order devuelve la comanda abierta (o None)."""
+    assert table.open_order is None
+    order = _abrir_comanda(table, bartender_user)
+    assert table.open_order == order
+    _agregar_item(order, product, 1, status=OrderItem.Status.ENTREGADO)
+    order.close_to_sale(user=bartender_user, cash_register=None, cash_received=Decimal("200"))
+    assert table.open_order is None  # al cerrar se pagó y liberó la mesa
+
+
 # ---------------------------------------------------------------------------
 # Order / OrderItem
 # ---------------------------------------------------------------------------

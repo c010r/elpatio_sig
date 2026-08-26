@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load django_bootstrap5 %}
 {% load money %}
+{% load l10n %}
 {% block title %}Cerrar caja — El Patio SIG{% endblock %}
 
 {% block breadcrumbs %}
@@ -16,29 +17,90 @@
 {# register: prefiere la variable `register` de la vista; si no, usa la caja abierta global #}
 {% with register=register|default:open_cash_register %}
 <div class="row justify-content-center">
-    <div class="col-lg-6">
+    <div class="col-lg-8">
         {% if register %}
         <div class="card shadow-sm mb-3">
             <div class="card-header bg-white">
                 <h1 class="h5 mb-0">🔒 Cerrar caja</h1>
             </div>
             <div class="card-body">
-                <div class="row small text-muted mb-3">
+                <div class="row small text-muted">
                     <div class="col-6">Abierta por: <strong>{{ register.opened_by.get_full_name|default:register.opened_by.username }}</strong></div>
                     <div class="col-6 text-end">Apertura: <strong>{{ register.opened_at|date:"d/m/Y H:i" }}</strong></div>
                     <div class="col-6 mt-2">Monto inicial: <strong>{{ register.opening_amount|money }}</strong></div>
-                    <div class="col-6 mt-2 text-end">Monto esperado: <strong>{{ register.expected_amount|money }}</strong></div>
+                    <div class="col-6 mt-2 text-end">Esperado (total): <strong>{{ expected_total|default:0|money }}</strong></div>
                 </div>
-                <form method="post" novalidate>
-                    {% csrf_token %}
-                    {% bootstrap_form form %}
-                    <div class="d-flex gap-2 mt-3">
-                        <button type="submit" class="btn btn-danger">🔒 Cerrar caja</button>
-                        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary">Cancelar</a>
-                    </div>
-                </form>
             </div>
         </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">💵 Arqueo por método</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle mb-0" id="cash-count-table">
+                        <thead>
+                            <tr>
+                                <th>Método</th>
+                                <th class="text-end">Esperado</th>
+                                <th>Contado ($U)</th>
+                                <th class="text-end">Diferencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr data-method="efectivo" data-expected="{{ expected_by_method.efectivo|default:0|unlocalize }}">
+                                <td>💵 Efectivo</td>
+                                <td class="text-end">{{ expected_by_method.efectivo|default:0|money }}</td>
+                                <td>{{ form.counted_cash }}</td>
+                                <td class="text-end diff-cell">—</td>
+                            </tr>
+                            <tr data-method="tarjeta" data-expected="{{ expected_by_method.tarjeta|default:0|unlocalize }}">
+                                <td>💳 Tarjeta</td>
+                                <td class="text-end">{{ expected_by_method.tarjeta|default:0|money }}</td>
+                                <td>{{ form.counted_card }}</td>
+                                <td class="text-end diff-cell">—</td>
+                            </tr>
+                            <tr data-method="transferencia" data-expected="{{ expected_by_method.transferencia|default:0|unlocalize }}">
+                                <td>🏦 Transferencia</td>
+                                <td class="text-end">{{ expected_by_method.transferencia|default:0|money }}</td>
+                                <td>{{ form.counted_transfer }}</td>
+                                <td class="text-end diff-cell">—</td>
+                            </tr>
+                            <tr data-method="otro" data-expected="{{ expected_by_method.otro|default:0|unlocalize }}">
+                                <td>📄 Otro</td>
+                                <td class="text-end">{{ expected_by_method.otro|default:0|money }}</td>
+                                <td>{{ form.counted_other }}</td>
+                                <td class="text-end diff-cell">—</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <th>Total</th>
+                                <th class="text-end">{{ expected_total|default:0|money }}</th>
+                                <th></th>
+                                <th class="text-end diff-total">—</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" id="cash-close-form" novalidate>
+            {% csrf_token %}
+            {% bootstrap_form form exclude="counted_cash,counted_card,counted_transfer,counted_other" %}
+            <div class="form-check mb-3" id="confirm-diff-wrap" style="display:none;">
+                <input class="form-check-input" type="checkbox" name="confirm_difference" id="id_confirm_difference" value="1">
+                <label class="form-check-label text-danger" for="id_confirm_difference">
+                    ⚠️ Hay diferencia entre lo esperado y lo contado. Confirmo que deseo cerrar la caja igualmente.
+                </label>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-danger">🔒 Cerrar caja</button>
+                <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
         {% else %}
         <div class="alert alert-info d-flex justify-content-between align-items-center">
             <span>No hay ninguna caja abierta en este momento.</span>

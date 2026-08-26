@@ -17,7 +17,8 @@ class ProductForm(forms.ModelForm):
         model = Product
         fields = [
             "name", "category", "unit", "purchase_price", "sale_price",
-            "stock_current", "stock_min", "barcode", "image", "is_active",
+            "stock_current", "stock_min", "barcode", "image",
+            "promo_price", "promo_active", "is_active",
         ]
 
     def clean_sale_price(self):
@@ -31,6 +32,20 @@ class ProductForm(forms.ModelForm):
         if purchase_price < 0:
             raise forms.ValidationError("El precio de compra no puede ser negativo.")
         return purchase_price
+
+    def clean_promo_price(self):
+        promo_price = self.cleaned_data["promo_price"]
+        if promo_price is not None and promo_price <= 0:
+            raise forms.ValidationError("El precio promo debe ser mayor a cero.")
+        return promo_price
+
+    def clean(self):
+        cleaned = super().clean()
+        promo_active = cleaned.get("promo_active")
+        promo_price = cleaned.get("promo_price")
+        if promo_active and promo_price is None:
+            self.add_error("promo_price", "Para activar la promo hay que cargar un precio promo.")
+        return cleaned
 
 
 class StockMovementForm(forms.ModelForm):

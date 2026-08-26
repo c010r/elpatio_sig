@@ -93,3 +93,14 @@ def test_logout_get_not_allowed(client_admin):
     """
     response = client_admin.get(reverse("core:logout"))
     assert response.status_code == 405
+
+
+def test_admin_deshabilitado_404(client):
+    """Decisión del dueño: el módulo admin de Django está DESHABILITADO.
+
+    /admin/ (y su login) no existen → 404. Toda la administración se hace con
+    pantallas propias (usuarios, CRUD, reportes). Ningún test debe depender
+    del admin de Django.
+    """
+    assert client.get("/admin/").status_code == 404
+    assert client.get("/admin/login/").status_code == 404

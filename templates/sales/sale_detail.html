@@ -100,6 +100,11 @@
                     <span>Descuento</span><span>-{{ sale.discount|money }}</span>
                 </div>
                 {% endif %}
+                {% if sale.tip %}
+                <div class="d-flex justify-content-between">
+                    <span>Propina</span><span>{{ sale.tip|money }}</span>
+                </div>
+                {% endif %}
                 <div class="d-flex justify-content-between ticket-total">
                     <span>TOTAL</span><span>{{ sale.total|money }}</span>
                 </div>

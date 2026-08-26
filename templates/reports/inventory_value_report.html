@@ -32,6 +32,18 @@
     </div>
 </div>
 
+{# ------------------------- Gráfico (Chart.js — extra informativo, opcional) ------------------------- #}
+{% if chart_labels %}
+<div class="card shadow-sm mb-3">
+    <div class="card-header bg-white"><h5 class="mb-0">📊 Valor por categoría</h5></div>
+    <div class="card-body">
+        <div class="chart-box"><canvas id="chart-inventory"></canvas></div>
+    </div>
+</div>
+{{ chart_labels|json_script:"chart-labels" }}
+{{ chart_data|json_script:"chart-data" }}
+{% endif %}
+
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -72,4 +84,41 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{# Chart.js v4.4.9 con SRI — SHA-512 verificado por el agente de seguridad (SECURITY.md §6.6) #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"
+        integrity="sha512-Nq18NiUbU5CwGkebYDTqV0hQG80DQH4t0RZvT2D3nmVYrAADGnDmuL9ON2H7c26mcN3otYEqESvERA7schji+g=="
+        crossorigin="anonymous"></script>
+<script>
+(function () {
+    if (typeof Chart === "undefined") return;
+    var labelsEl = document.getElementById("chart-labels");
+    var dataEl = document.getElementById("chart-data");
+    var canvas = document.getElementById("chart-inventory");
+    if (!labelsEl || !dataEl || !canvas) return;
+    var labels = JSON.parse(labelsEl.textContent);
+    var data = JSON.parse(dataEl.textContent);
+    new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Valor ($U)",
+                data: data,
+                backgroundColor: "rgba(30,126,52,.7)",
+                borderColor: "#1e7e34",
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+})();
+</script>
 {% endblock %}

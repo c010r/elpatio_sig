@@ -575,3 +575,63 @@ a.kpi-card:hover {
 
 /* ------------------------------ Utilidades ------------------------------ */
 .text-nowrap { white-space: nowrap; }
+
+/* ==========================================================================
+   FASE 2 — Happy hour, promos, propinas, arqueo y gráficos
+   ========================================================================== */
+
+/* --- Happy hour (POS) --- */
+.happy-hour-banner {
+    background: linear-gradient(90deg, #fff3d6, #ffe9bd);
+    border-color: var(--ep-amber);
+    color: #4a2e17;
+    font-weight: 500;
+}
+
+/* --- Promo en tarjetas POS --- */
+.pos-product-price-old {
+    text-decoration: line-through;
+    color: #9a7b5a;
+    font-size: .78rem;
+    font-weight: 500;
+    margin-right: .3rem;
+}
+.pos-product-price.promo {
+    color: var(--ep-danger);
+    font-weight: 700;
+}
+.pos-promo-badge {
+    font-size: .62rem;
+    letter-spacing: .4px;
+}
+
+/* --- Botones de propina (POS) --- */
+.tip-btn.active {
+    background: var(--ep-amber);
+    border-color: var(--ep-amber);
+    color: #241409;
+    font-weight: 600;
+}
+
+/* --- Arqueo de caja --- */
+#cash-count-table input[type="number"] {
+    min-width: 130px;
+    border: 1px solid #ced4da;
+    border-radius: .375rem;
+    padding: .3rem .5rem;
+    font-size: .875rem;
+}
+#cash-count-table input[type="number"]:focus {
+    border-color: var(--ep-amber);
+    box-shadow: 0 0 0 .2rem rgba(232, 163, 61, .2);
+    outline: none;
+}
+.diff-negative { color: var(--ep-danger); font-weight: 600; }
+.diff-positive { color: var(--ep-success); font-weight: 600; }
+.diff-zero { color: #6c757d; }
+
+/* --- Gráficos (Chart.js) --- */
+.chart-box {
+    position: relative;
+    height: 280px;
+}

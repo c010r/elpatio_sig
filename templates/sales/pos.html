@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load money %}
+{% load l10n %}
 {% block title %}Punto de venta — El Patio SIG{% endblock %}
 
 {% block breadcrumbs %}
@@ -19,6 +20,17 @@
 </div>
 {% endif %}
 
+{# --- Banner de happy hour (contexto `happy_hour` del backend) --- #}
+{% if happy_hour and happy_hour.active %}
+<div class="alert happy-hour-banner d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <span>
+        🍺 <strong>Happy hour{% if happy_hour.name %} {{ happy_hour.name }}{% endif %}: {{ happy_hour.discount_percent }}% OFF</strong>
+        {% if happy_hour.until %}(hasta {{ happy_hour.until }}){% endif %}
+    </span>
+    <span class="small text-muted">Se aplica automáticamente a precios regulares · no acumula con promos</span>
+</div>
+{% endif %}
+
 <div class="row g-3">
     {# ------------------- GRID DE PRODUCTOS ------------------- #}
     <div class="col-lg-8">
@@ -35,9 +47,14 @@
                                {% if product.stock_current <= 0 %}disabled{% endif %}"
                         data-product-id="{{ product.pk }}"
                         data-product-name="{{ product.name }}"
-                        data-product-price="{{ product.sale_price }}"
+                        {% if product.promo_active and product.promo_price %}
+                        data-product-price="{{ product.promo_price|unlocalize }}"
+                        data-product-price-display="{{ product.promo_price|money }}"
+                        {% else %}
+                        data-product-price="{{ product.sale_price|unlocalize }}"
                         data-product-price-display="{{ product.sale_price|money }}"
-                        data-product-stock="{{ product.stock_current }}"
+                        {% endif %}
+                        data-product-stock="{{ product.stock_current|unlocalize }}"
                         {% if product.stock_current <= 0 %}aria-disabled="true"{% endif %}>
                     <div class="pos-product-img">
                         {% if product.image %}
@@ -48,15 +65,27 @@
                     </div>
                     <div class="pos-product-body">
                         <div class="pos-product-name" title="{{ product.name }}">{{ product.name }}</div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="pos-product-price">{{ product.sale_price|money }}</span>
-                            {% if product.stock_current <= 0 %}
-                            <span class="badge bg-secondary">Sin stock</span>
-                            {% elif product.stock_current <= product.stock_min %}
-                            <span class="badge bg-danger">{{ product.stock_current|floatformat:0 }} {{ product.unit }}</span>
-                            {% else %}
-                            <span class="badge bg-success">{{ product.stock_current|floatformat:0 }} {{ product.unit }}</span>
-                            {% endif %}
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                            <span>
+                                {% if product.promo_active and product.promo_price %}
+                                <span class="pos-product-price-old">{{ product.sale_price|money }}</span>
+                                <span class="pos-product-price promo">{{ product.promo_price|money }}</span>
+                                {% else %}
+                                <span class="pos-product-price">{{ product.sale_price|money }}</span>
+                                {% endif %}
+                            </span>
+                            <span class="d-flex align-items-center gap-1">
+                                {% if product.promo_active and product.promo_price %}
+                                <span class="badge bg-danger pos-promo-badge">🔥 PROMO</span>
+                                {% endif %}
+                                {% if product.stock_current <= 0 %}
+                                <span class="badge bg-secondary">Sin stock</span>
+                                {% elif product.stock_current <= product.stock_min %}
+                                <span class="badge bg-danger">{{ product.stock_current|floatformat:0 }} {{ product.unit }}</span>
+                                {% else %}
+                                <span class="badge bg-success">{{ product.stock_current|floatformat:0 }} {{ product.unit }}</span>
+                                {% endif %}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -82,6 +111,15 @@
                 </div>
             </div>
             <div class="card-footer bg-white">
+                <div class="d-flex justify-content-between small text-muted">
+                    <span>Subtotal</span><span id="cart-subtotal">$U 0,00</span>
+                </div>
+                <div class="d-flex justify-content-between small text-muted">
+                    <span>Descuento</span><span id="cart-discount-line">-$U 0,00</span>
+                </div>
+                <div class="d-flex justify-content-between small text-muted">
+                    <span>Propina</span><span id="cart-tip-line">$U 0,00</span>
+                </div>
                 <div class="d-flex justify-content-between fs-5 fw-bold mb-2">
                     <span>Total</span>
                     <span id="cart-total">$U 0,00</span>
@@ -92,6 +130,19 @@
                     <div class="mb-2">
                         <label class="form-label small mb-1" for="pos-discount">Descuento ($U)</label>
                         <input type="number" step="0.01" min="0" id="pos-discount" name="discount" class="form-control form-control-sm" value="0">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Propina</label>
+                        <div class="d-flex gap-1 mb-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary tip-btn" data-tip-percent="10">10%</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary tip-btn" data-tip-percent="15">15%</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary tip-btn" data-tip-percent="20">20%</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary tip-btn" data-tip-percent="0">Sin</button>
+                        </div>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">$U</span>
+                            <input type="number" step="0.01" min="0" id="pos-tip" name="tip" class="form-control" placeholder="Monto libre">
+                        </div>
                     </div>
                     <div class="mb-2">
                         <label class="form-label small mb-1" for="pos-payment">Método de pago</label>
@@ -132,7 +183,8 @@
     window.POS_CONFIG = {
         currency: '$U ',
         emptyCartMessage: 'El carrito está vacío. Agregá productos para cobrar.',
-        exceedingStockMessage: 'Stock insuficiente para el producto «{name}». Disponible: {stock}.'
+        exceedingStockMessage: 'Stock insuficiente para el producto «{name}». Disponible: {stock}.',
+        discountExceedsMessage: 'El descuento no puede superar el subtotal ({max}).'
     };
 </script>
 {% endblock %}

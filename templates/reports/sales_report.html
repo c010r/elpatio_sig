@@ -61,6 +61,36 @@
     </div>
 </div>
 
+{# ------------------------- Gráficos (Chart.js — extra informativo) ------------------------- #}
+{% if chart_labels or payment_labels %}
+<div class="row g-3 mb-3">
+    {% if chart_labels %}
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><h5 class="mb-0">📊 Ventas por día</h5></div>
+            <div class="card-body">
+                <div class="chart-box"><canvas id="chart-sales"></canvas></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if payment_labels %}
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><h5 class="mb-0">💳 Ventas por método de pago</h5></div>
+            <div class="card-body">
+                <div class="chart-box"><canvas id="chart-payments"></canvas></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{{ chart_labels|json_script:"chart-labels" }}
+{{ chart_data|json_script:"chart-data" }}
+{{ payment_labels|json_script:"payment-labels" }}
+{{ payment_data|json_script:"payment-data" }}
+{% endif %}
+
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -93,4 +123,65 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{# Chart.js v4.4.9 con SRI — SHA-512 verificado por el agente de seguridad (SECURITY.md §6.6) #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"
+        integrity="sha512-Nq18NiUbU5CwGkebYDTqV0hQG80DQH4t0RZvT2D3nmVYrAADGnDmuL9ON2H7c26mcN3otYEqESvERA7schji+g=="
+        crossorigin="anonymous"></script>
+<script>
+(function () {
+    if (typeof Chart === "undefined") return;
+    function readJson(id) {
+        var el = document.getElementById(id);
+        return el ? JSON.parse(el.textContent) : null;
+    }
+    var labels = readJson("chart-labels");
+    var data = readJson("chart-data");
+    var salesCanvas = document.getElementById("chart-sales");
+    if (labels && data && salesCanvas) {
+        new Chart(salesCanvas, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Ventas ($U)",
+                    data: data,
+                    borderColor: "#e8a33d",
+                    backgroundColor: "rgba(232,163,61,.15)",
+                    fill: true,
+                    tension: .3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+    var payLabels = readJson("payment-labels");
+    var payData = readJson("payment-data");
+    var payCanvas = document.getElementById("chart-payments");
+    if (payLabels && payData && payCanvas) {
+        new Chart(payCanvas, {
+            type: "doughnut",
+            data: {
+                labels: payLabels,
+                datasets: [{
+                    data: payData,
+                    backgroundColor: ["#1e7e34", "#0d6efd", "#d39e00", "#6c757d"]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: "bottom" } }
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

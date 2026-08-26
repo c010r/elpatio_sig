@@ -13,6 +13,7 @@ from django.views.generic import CreateView, DeleteView, UpdateView
 
 from core.mixins import RoleRequiredMixin
 from sales.models import CashRegister
+from sales.views import _happy_hour_context
 
 from .forms import OrderCloseForm, OrderForm, OrderItemForm, TableForm
 from .models import Order, OrderItem, Table
@@ -105,6 +106,7 @@ class OrderDetailView(RoleRequiredMixin, View):
                 "item_form": OrderItemForm(),
                 "close_form": OrderCloseForm(),
                 "total": order.total,
+                "happy_hour": _happy_hour_context(),
             },
         )
 
@@ -201,6 +203,7 @@ class OrderCloseView(RoleRequiredMixin, View):
                 cash_received=form.cleaned_data.get("cash_received"),
                 cash_register=register,
                 discount=form.cleaned_data.get("discount") or Decimal("0"),
+                tip=form.cleaned_data.get("tip") or Decimal("0"),
             )
         except ValidationError as exc:
             messages.error(request, "; ".join(getattr(exc, "messages", [str(exc)])))

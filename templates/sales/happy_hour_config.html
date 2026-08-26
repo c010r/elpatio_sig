@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% block title %}Configuración de happy hour — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'sales:pos' %}">Ventas</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Happy hour</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">🍺 Configuración de happy hour</h1>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info small py-2">
+                    💡 Si el happy hour está <strong>habilitado</strong>, se aplica automáticamente
+                    <strong>{{ object.name|default:"en la franja horaria configurada" }}</strong> sobre los precios
+                    regulares al agregar ítems en el POS y las comandas. <strong>No se acumula</strong> con promos
+                    por producto (si el producto tiene promo activa, se usa la promo).
+                </div>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% bootstrap_form form %}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary">💾 Guardar</button>
+                        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

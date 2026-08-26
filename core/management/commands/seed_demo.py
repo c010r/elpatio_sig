@@ -5,8 +5,9 @@ Uso: python manage.py seed_demo
 
 Crea los 4 grupos (admin, gerente, bartender, cajero), usuarios demo con
 contraseña "demo12345", categorías, productos (precios en UYU), mesas,
-1 proveedor, 1 cliente y la configuración de fidelización.
+1 proveedor, 1 cliente y las configuraciones de fidelización y happy hour.
 """
+from datetime import time
 from decimal import Decimal
 
 from django.contrib.auth.models import Group, User
@@ -15,6 +16,7 @@ from django.core.management.base import BaseCommand
 from customers.models import Customer, LoyaltyConfig
 from inventory.models import Category, Product
 from purchases.models import Supplier
+from sales.models import HappyHourConfig
 from tables.models import Table
 
 GROUPS = ["admin", "gerente", "bartender", "cajero"]
@@ -149,11 +151,30 @@ class Command(BaseCommand):
                 "points_per_currency": Decimal("1"),
                 "points_required_for_discount": 100,
                 "discount_amount": Decimal("10"),
+                "max_discount_percent": 50,
             },
         )
         self.stdout.write(
             f"  - {config.points_per_currency} punto por moneda, "
-            f"{config.points_required_for_discount} puntos -> {config.discount_amount} UYU"
+            f"{config.points_required_for_discount} puntos -> {config.discount_amount} UYU, "
+            f"máx. descuento manual {config.max_discount_percent}%"
+        )
+
+        self.stdout.write(self.style.MIGRATE_HEADING("Configuración de happy hour..."))
+        happy_hour, _ = HappyHourConfig.objects.get_or_create(
+            pk=1,
+            defaults={
+                "enabled": True,
+                "start_time": time(18, 0),
+                "end_time": time(21, 0),
+                "discount_percent": Decimal("15"),
+                "name": "Happy hour 18-21",
+            },
+        )
+        self.stdout.write(
+            f"  - {happy_hour.name}: {happy_hour.discount_percent}% OFF "
+            f"({happy_hour.start_time:%H:%M} a {happy_hour.end_time:%H:%M}, "
+            f"{'habilitado' if happy_hour.enabled else 'deshabilitado'})"
         )
 
         self.stdout.write(self.style.SUCCESS("Seed demo completado (idempotente)."))
