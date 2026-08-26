@@ -11,6 +11,7 @@
 
     --ep-surface: #ffffff;         /* cards / sidebar */
     --ep-surface-2: #f8fafc;       /* headers de cards / filas */
+    --ep-topbar-bg: rgba(255, 255, 255, .95);   /* topbar (semi-translucida) */
 
     --ep-ink: #0f172a;             /* texto principal */
     --ep-ink-soft: #475569;        /* texto secundario */
@@ -303,7 +304,7 @@ a:hover { color: var(--ep-emerald-strong); }
     top: 0;
     z-index: 1020;
     min-height: var(--ep-topbar-h);
-    background: rgba(255, 255, 255, .95);
+    background: var(--ep-topbar-bg);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--ep-border);
@@ -993,6 +994,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 
     --ep-surface: #1e293b;
     --ep-surface-2: #24344d;
+    --ep-topbar-bg: rgba(15, 23, 42, .92);
 
     --ep-ink: #e2e8f0;
     --ep-ink-soft: #cbd5e1;
