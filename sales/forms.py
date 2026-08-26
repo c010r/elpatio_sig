@@ -5,10 +5,18 @@ from decimal import Decimal
 
 from django import forms
 
-from .models import CashRegister, HappyHourConfig, Sale
+from .models import CashRegister, HappyHourConfig, Sale, SaleConfig
 
 # F2-08: tope de cordura para montos contados en el arqueo ($U 10.000.000).
 MAX_COUNTED_AMOUNT = Decimal("10000000")
+
+
+class SaleConfigForm(forms.ModelForm):
+    """Configuración global de emisión de ticket en el POS."""
+
+    class Meta:
+        model = SaleConfig
+        fields = ["pos_print_ticket"]
 
 
 class HappyHourConfigForm(forms.ModelForm):

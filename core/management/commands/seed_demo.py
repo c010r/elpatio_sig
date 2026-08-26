@@ -16,7 +16,7 @@ from django.core.management.base import BaseCommand
 from customers.models import Customer, LoyaltyConfig
 from inventory.models import Category, Product
 from purchases.models import Supplier
-from sales.models import HappyHourConfig
+from sales.models import HappyHourConfig, SaleConfig
 from tables.models import Table
 
 GROUPS = ["admin", "gerente", "bartender", "cajero"]
@@ -175,6 +175,14 @@ class Command(BaseCommand):
             f"  - {happy_hour.name}: {happy_hour.discount_percent}% OFF "
             f"({happy_hour.start_time:%H:%M} a {happy_hour.end_time:%H:%M}, "
             f"{'habilitado' if happy_hour.enabled else 'deshabilitado'})"
+        )
+
+        self.stdout.write(self.style.MIGRATE_HEADING("Configuración de ventas (ticket POS)..."))
+        sale_config, _ = SaleConfig.objects.get_or_create(
+            pk=1, defaults={"pos_print_ticket": True}
+        )
+        self.stdout.write(
+            f"  - imprimir ticket en POS: {'sí' if sale_config.pos_print_ticket else 'no'}"
         )
 
         self.stdout.write(self.style.SUCCESS("Seed demo completado (idempotente)."))

@@ -71,7 +71,10 @@
                         <tbody>
                             {% for item in order.items.all %}
                             <tr>
-                                <td class="fw-semibold">{{ item.product.name }}</td>
+                                <td>
+                                    <div class="fw-semibold">{{ item.product.name }}</div>
+                                    {% if item.note %}<div class="small text-muted"><i class="bi bi-chat-left-text me-1"></i>{{ item.note }}</div>{% endif %}
+                                </td>
                                 <td class="text-center">{{ item.quantity|floatformat:2 }}</td>
                                 <td class="text-end">{{ item.unit_price|money }}</td>
                                 <td class="text-end">{{ item.subtotal|money }}</td>

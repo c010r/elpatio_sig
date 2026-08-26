@@ -29,6 +29,17 @@ User = get_user_model()
 pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture(autouse=True)
+def _limpiar_cache():
+    """Los singletons (LoyaltyConfig/HappyHourConfig/SaleConfig) cachean en
+    LocMemCache (no transaccional); se limpia entre tests."""
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
+
+
 # ---------------------------------------------------------------------------
 # Acceso por rol
 # ---------------------------------------------------------------------------
@@ -88,7 +99,8 @@ def test_pos_interruptor_imprimir_ticket(client_cajero, product, open_cash_regis
     )
     assert response.status_code == 302
     assert response.get("Location", "").endswith("?auto=1")
-    assert "/ventas/ventas/" in response.get("Location", "")
+    # Sale detail quedó en /ventas/<pk>/ (sin el prefijo repetido)
+    assert "/ventas/" in response.get("Location", "") and "pos" not in response.get("Location", "")
 
     # Sin el interruptor: vuelve directo al POS, sin página de ticket
     response = client_cajero.post(
@@ -256,3 +268,102 @@ def test_ticket_muestra_moneda_uyu(client_cajero, product, cajero_user, open_cas
     # Precio del producto fixture: 150.00 → "$U 150,00"
     assert "$U 150,00" in content
     assert "USD" not in content
+
+
+# ---------------------------------------------------------------------------
+# Config global de ticket del POS (SaleConfig)
+# ---------------------------------------------------------------------------
+
+def _pos_payload(product, **extra):
+    data = {
+        "product_id": [str(product.id)],
+        "quantity": ["1"],
+        "payment_method": "efectivo",
+        "cash_received": "200.00",
+    }
+    data.update(extra)
+    return data
+
+
+def test_pos_post_persiste_switch_encendido(client_cajero, product, open_cash_register):
+    """POS POST con print_ticket → el config global queda True."""
+    from sales.models import SaleConfig
+
+    SaleConfig.get_solo().save()  # asegura fila
+    response = client_cajero.post(
+        reverse("sales:pos"), _pos_payload(product, print_ticket="on")
+    )
+    assert response.status_code == 302
+    assert SaleConfig.get_solo().pos_print_ticket is True
+
+
+def test_pos_post_persiste_switch_apagado(client_cajero, product, open_cash_register):
+    """POS POST sin print_ticket → el config global queda False."""
+    from sales.models import SaleConfig
+
+    response = client_cajero.post(reverse("sales:pos"), _pos_payload(product))
+    assert response.status_code == 302
+    assert SaleConfig.get_solo().pos_print_ticket is False
+
+
+def test_pos_post_con_print_redirects_ticket_auto(client_cajero, product, open_cash_register):
+    """Con print_ticket → redirect a sale_detail?auto=1 (impresión automática)."""
+    response = client_cajero.post(
+        reverse("sales:pos"), _pos_payload(product, print_ticket="on")
+    )
+    assert response.status_code == 302
+    assert response.url.endswith("?auto=1")
+    assert reverse("sales:sale_detail", args=[Sale.objects.order_by("-pk").first().pk]) in response.url
+
+
+def test_pos_post_sin_print_redirects_pos(client_cajero, product, open_cash_register):
+    """Sin print_ticket → vuelta directa al POS (flujo rápido de barra)."""
+    response = client_cajero.post(reverse("sales:pos"), _pos_payload(product))
+    assert response.status_code == 302
+    assert response.url == reverse("sales:pos")
+
+
+def test_pos_get_refleja_config_persistido(client_cajero, product, open_cash_register):
+    """El siguiente GET del POS refleja el valor persistido en el config."""
+    from sales.models import SaleConfig
+
+    SaleConfig.get_solo().save()
+    response = client_cajero.post(reverse("sales:pos"), _pos_payload(product))
+    assert response.status_code == 302
+    assert SaleConfig.get_solo().pos_print_ticket is False
+
+    response = client_cajero.get(reverse("sales:pos"))
+    assert response.status_code == 200
+    assert response.context["pos_print_ticket"] is False
+
+
+@pytest.mark.parametrize("url_name", ["sale_config"])
+def test_sale_config_gerente_200(client_gerente, url_name):
+    assert client_gerente.get(reverse(f"sales:{url_name}")).status_code == 200
+
+
+@pytest.mark.parametrize("url_name", ["sale_config"])
+def test_sale_config_admin_200(client_admin, url_name):
+    assert client_admin.get(reverse(f"sales:{url_name}")).status_code == 200
+
+
+@pytest.mark.parametrize("url_name", ["sale_config"])
+def test_sale_config_bartender_cajero_denegado(client_bartender, client_cajero, url_name):
+    assert_access_denied(client_bartender.get(reverse(f"sales:{url_name}")))
+    assert_access_denied(client_cajero.get(reverse(f"sales:{url_name}")))
+
+
+def test_sale_config_post_actualiza_preferencia(client_gerente):
+    """La vista de config persiste pos_print_ticket vía form."""
+    from sales.models import SaleConfig
+
+    SaleConfig.get_solo().save()
+    response = client_gerente.post(
+        reverse("sales:sale_config"), {"pos_print_ticket": "on"}
+    )
+    assert response.status_code == 302
+    assert SaleConfig.get_solo().pos_print_ticket is True
+
+    response = client_gerente.post(reverse("sales:sale_config"), {})
+    assert response.status_code == 302
+    assert SaleConfig.get_solo().pos_print_ticket is False

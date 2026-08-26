@@ -17,8 +17,11 @@ from core.mixins import RoleRequiredMixin
 from customers.models import Customer
 from inventory.models import Product
 
-from .forms import CashRegisterCloseForm, CashRegisterOpenForm, HappyHourConfigForm, SaleForm
-from .models import CashRegister, HappyHourConfig, Sale, is_happy_hour_active
+from .forms import (
+    CashRegisterCloseForm, CashRegisterOpenForm, HappyHourConfigForm,
+    SaleConfigForm, SaleForm,
+)
+from .models import CashRegister, HappyHourConfig, Sale, SaleConfig, is_happy_hour_active
 
 audit = logging.getLogger("audit")
 
@@ -106,6 +109,7 @@ class PosView(RoleRequiredMixin, View):
             "form": SaleForm(),
             "open_cash_register": CashRegister.get_open(),
             "happy_hour": _happy_hour_context(),
+            "pos_print_ticket": SaleConfig.get_solo().pos_print_ticket,
         }
         return render(request, "sales/pos.html", context)
 
@@ -158,8 +162,16 @@ class PosView(RoleRequiredMixin, View):
             messages.error(request, "; ".join(getattr(exc, "messages", [str(exc)])))
             return redirect("sales:pos")
 
+        # Persistir la preferencia global de emisión de ticket: el switch del
+        # POS queda guardado en SaleConfig y no se borra al cobrar ni al
+        # recargar la página.
+        print_ticket = bool(request.POST.get("print_ticket"))
+        sale_config = SaleConfig.get_solo()
+        sale_config.pos_print_ticket = print_ticket
+        sale_config.save()
+
         messages.success(request, f"Venta {sale.ticket_number} registrada.")
-        if request.POST.get("print_ticket"):
+        if print_ticket:
             # Interruptor del POS: imprimir ticket y volver solo al POS.
             return redirect(reverse("sales:sale_detail", args=[sale.pk]) + "?auto=1")
         # Sin ticket: vuelta directa al POS (flujo rápido de barra).
@@ -338,4 +350,27 @@ class HappyHourConfigView(RoleRequiredMixin, FormView):
             self.request.user.username, config.enabled, config.discount_percent,
         )
         messages.success(self.request, "Configuración de happy hour actualizada.")
+        return super().form_valid(form)
+
+
+class SaleConfigView(RoleRequiredMixin, FormView):
+    """Configuración global de emisión de ticket en el POS (solo admin/gerente)."""
+
+    template_name = "sales/sale_config.html"
+    form_class = SaleConfigForm
+    success_url = reverse_lazy("sales:sale_config")
+    roles = ["gerente", "admin"]
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = SaleConfig.get_solo()
+        return kwargs
+
+    def form_valid(self, form):
+        config = form.save()
+        audit.info(
+            "sale_config_editada por=%s pos_print_ticket=%s",
+            self.request.user.username, config.pos_print_ticket,
+        )
+        messages.success(self.request, "Configuración de ventas actualizada.")
         return super().form_valid(form)

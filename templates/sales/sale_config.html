@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% block title %}Configuración de ventas — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'sales:pos' %}">Ventas</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Configuración</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h1 class="h5 mb-0">⚙️ Configuración de ventas</h1>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {# Switch "imprimir ticket": si el form expone pos_print_ticket como BooleanField, se renderiza como switch #}
+                    {% if form.pos_print_ticket %}
+                    <div class="form-check form-switch mb-3">
+                        {{ form.pos_print_ticket }}
+                        <label class="form-check-label fw-semibold" for="{{ form.pos_print_ticket.id_for_label }}">
+                            <i class="bi bi-printer me-1"></i>Imprimir ticket al cobrar
+                        </label>
+                        {% if form.pos_print_ticket.help_text %}
+                        <div class="form-text">{{ form.pos_print_ticket.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% bootstrap_form form exclude="pos_print_ticket" %}
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary">💾 Guardar</button>
+                        <a href="{% url 'sales:pos' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

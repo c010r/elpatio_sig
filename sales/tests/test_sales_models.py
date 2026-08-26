@@ -200,3 +200,27 @@ def test_anular_dos_veces_rechazado(product, cajero_user, open_cash_register):
     sale.void(cajero_user)
     with pytest.raises(ValidationError):
         sale.void(cajero_user)
+
+
+# ---------------------------------------------------------------------------
+# SaleConfig (config global de ticket del POS)
+# ---------------------------------------------------------------------------
+
+def test_sale_config_get_solo_crea_pk_1():
+    """SaleConfig es singleton: get_solo() crea la fila pk=1 con default True."""
+    from sales.models import SaleConfig
+
+    cfg = SaleConfig.get_solo()
+    assert cfg.pk == 1
+    assert cfg.pos_print_ticket is True
+    assert SaleConfig.objects.count() == 1
+
+
+def test_sale_config_save_fuerza_pk_1_y_actualiza():
+    from sales.models import SaleConfig
+
+    cfg = SaleConfig(pos_print_ticket=False)
+    cfg.save()
+    assert cfg.pk == 1
+    assert SaleConfig.objects.count() == 1
+    assert SaleConfig.get_solo().pos_print_ticket is False

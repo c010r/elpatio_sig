@@ -163,7 +163,7 @@
                     </div>
 
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" role="switch" id="pos-print" name="print_ticket" checked>
+                        <input class="form-check-input" type="checkbox" role="switch" id="pos-print" name="print_ticket" {% if pos_print_ticket %}checked{% endif %}>
                         <label class="form-check-label small" for="pos-print"><i class="bi bi-printer me-1"></i>Imprimir ticket</label>
                     </div>
 

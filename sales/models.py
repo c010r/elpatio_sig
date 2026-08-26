@@ -13,6 +13,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 CACHE_KEY_HAPPY_HOUR = "happy_hour_config_solo"
+CACHE_KEY_SALE_CONFIG = "sale_config_solo"
 
 
 class HappyHourConfig(models.Model):
@@ -47,6 +48,38 @@ class HappyHourConfig(models.Model):
         self.pk = 1
         super().save(*args, **kwargs)
         cache.delete(CACHE_KEY_HAPPY_HOUR)
+
+
+class SaleConfig(models.Model):
+    """Configuración global de emisión de ticket en el POS (singleton pk=1, con caché).
+
+    `pos_print_ticket` es la preferencia del dueño: si el POS debe imprimir
+    ticket por defecto. Se persiste desde el switch del POS (no se borra al
+    cobrar) y es editable por gerente/admin en sales:sale_config.
+    """
+
+    pos_print_ticket = models.BooleanField("imprimir ticket en POS", default=True)
+
+    class Meta:
+        verbose_name = "configuración de ventas"
+        verbose_name_plural = "configuración de ventas"
+
+    def __str__(self):
+        return "Configuración de ventas"
+
+    @classmethod
+    def get_solo(cls):
+        """Devuelve la config única con caché (5 minutos); la crea si no existe."""
+        config = cache.get(CACHE_KEY_SALE_CONFIG)
+        if config is None:
+            config, _ = cls.objects.get_or_create(pk=1)
+            cache.set(CACHE_KEY_SALE_CONFIG, config, 300)
+        return config
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+        cache.delete(CACHE_KEY_SALE_CONFIG)
 
 
 def is_happy_hour_active(at_time=None):

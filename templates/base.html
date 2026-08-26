@@ -82,6 +82,9 @@
             <a href="{% url 'sales:happy_hour_config' %}" class="nav-link {% if active == 'happy_hour_config' %}active{% endif %}">
                 <span class="nav-icon"><i class="bi bi-cup-straw"></i></span><span>Happy hour</span>
             </a>
+            <a href="{% url 'sales:sale_config' %}" class="nav-link {% if active == 'sale_config' %}active{% endif %}">
+                <span class="nav-icon"><i class="bi bi-gear"></i></span><span>Configuración</span>
+            </a>
             {% endif %}
             {% endif %}
             {% endif %}
