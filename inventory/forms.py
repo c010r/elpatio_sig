@@ -18,7 +18,7 @@ class ProductForm(forms.ModelForm):
         fields = [
             "name", "category", "unit", "purchase_price", "sale_price",
             "stock_current", "stock_min", "barcode", "image",
-            "promo_price", "promo_active", "is_composed", "is_active",
+            "promo_price", "promo_active", "is_composed", "is_raw_material", "is_active",
         ]
 
     def clean_sale_price(self):
@@ -60,6 +60,12 @@ class ProductForm(forms.ModelForm):
                     "is_composed",
                     "Un producto elaborado necesita al menos un ingrediente de receta.",
                 )
+        # Un producto no puede ser a la vez elaborado (receta) y materia prima.
+        if cleaned.get("is_composed") and cleaned.get("is_raw_material"):
+            self.add_error(
+                "is_raw_material",
+                "Un producto elaborado (con receta) no puede ser materia prima.",
+            )
         return cleaned
 
 

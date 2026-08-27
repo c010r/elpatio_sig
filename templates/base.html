@@ -95,6 +95,9 @@
             <a href="{% url 'inventory:product_list' %}" class="nav-link {% if active == 'product_list' or active == 'product_form' %}active{% endif %}">
                 <span class="nav-icon"><i class="bi bi-box-seam"></i></span><span>Productos</span>
             </a>
+            <a href="{% url 'inventory:material_list' %}" class="nav-link {% if active == 'material_list' %}active{% endif %}">
+                <span class="nav-icon"><i class="bi bi-box2"></i></span><span>Materia prima</span>
+            </a>
             <a href="{% url 'inventory:category_list' %}" class="nav-link {% if active == 'category_list' or active == 'category_form' %}active{% endif %}">
                 <span class="nav-icon"><i class="bi bi-tags"></i></span><span>CategorÃ­as</span>
             </a>

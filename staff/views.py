@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
@@ -209,12 +209,12 @@ class LiquidacionListView(RoleRequiredMixin, ListView):
             Liquidacion.objects.select_related("employee__user", "generated_by")
             .order_by("-date", "employee__user__username")
         )
-        date_from = self.request.GET.get("date_from")
-        if date_from:
-            qs = qs.filter(date__gte=date_from)
-        date_to = self.request.GET.get("date_to")
-        if date_to:
-            qs = qs.filter(date__lte=date_to)
+        start_date = self.request.GET.get("start_date")
+        if start_date:
+            qs = qs.filter(date__gte=start_date)
+        end_date = self.request.GET.get("end_date")
+        if end_date:
+            qs = qs.filter(date__lte=end_date)
         employee_id = self.request.GET.get("employee")
         if employee_id and employee_id.isdigit():
             qs = qs.filter(employee_id=int(employee_id))
@@ -225,7 +225,10 @@ class LiquidacionListView(RoleRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["employees"] = Employee.objects.filter(is_active=True).select_related("user").order_by("user__username")
+        ctx["employee_choices"] = (
+            Employee.objects.filter(is_active=True).select_related("user").order_by("user__username")
+        )
+        ctx["employees"] = ctx["employee_choices"]
         return ctx
 
 
@@ -248,15 +251,15 @@ class LiquidacionCreateView(RoleRequiredMixin, View):
             Employee.objects.filter(is_active=True).select_related("user").order_by("user__username")
         ):
             hours = Liquidacion.hours_for(employee, date)
-            rate = employee.hourly_rate
+            rate = Decimal(employee.hourly_rate)
             gross = (hours * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             existing = Liquidacion.objects.filter(employee=employee, date=date).first()
             rows.append(
                 {
                     "employee": employee,
-                    "hours": hours,
-                    "rate": rate,
-                    "gross": gross,
+                    "hours_worked": hours,
+                    "hourly_rate": rate,
+                    "gross_amount": gross,
                     "existing": existing,
                 }
             )
@@ -264,10 +267,13 @@ class LiquidacionCreateView(RoleRequiredMixin, View):
 
     def get(self, request):
         date = self._parse_date(request)
+        if not request.GET.get("date"):
+            # El template usa request.GET.date; garantizamos el parámetro.
+            return redirect(f"{reverse('staff:liquidacion_create')}?date={date.isoformat()}")
         return render(
             request,
             "staff/liquidacion_create.html",
-            {"date": date, "rows": self._preview(date)},
+            {"selected_date": date, "date": date, "rows": self._preview(date)},
         )
 
     def post(self, request):
@@ -307,14 +313,14 @@ class LiquidacionDetailView(RoleRequiredMixin, DetailView):
         self.object = self.get_object()
         action = request.POST.get("action")
         try:
-            if action == "marcar_liquidada":
+            if action == "liquidar":
                 self.object.marcar_liquidada(user=request.user)
                 audit.info(
                     "liquidacion_marcada_liquidada por=%s id=%s empleado=%s fecha=%s",
                     request.user.username, self.object.pk, self.object.employee_id, self.object.date,
                 )
                 messages.success(request, "Liquidación marcada como liquidada.")
-            elif action == "marcar_pagada":
+            elif action == "pagar":
                 self.object.marcar_pagada(user=request.user)
                 audit.info(
                     "liquidacion_marcada_pagada por=%s id=%s empleado=%s fecha=%s",
@@ -338,12 +344,12 @@ class LiquidacionCsvView(RoleRequiredMixin, View):
             Liquidacion.objects.select_related("employee__user")
             .order_by("-date", "employee__user__username")
         )
-        date_from = request.GET.get("date_from")
-        if date_from:
-            qs = qs.filter(date__gte=date_from)
-        date_to = request.GET.get("date_to")
-        if date_to:
-            qs = qs.filter(date__lte=date_to)
+        start_date = request.GET.get("start_date")
+        if start_date:
+            qs = qs.filter(date__gte=start_date)
+        end_date = request.GET.get("end_date")
+        if end_date:
+            qs = qs.filter(date__lte=end_date)
         employee_id = request.GET.get("employee")
         if employee_id and employee_id.isdigit():
             qs = qs.filter(employee_id=int(employee_id))

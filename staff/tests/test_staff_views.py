@@ -67,12 +67,21 @@ LIQ_URLS_SIN_PK = ["liquidacion_list", "liquidacion_create", "liquidacion_csv"]
 
 @pytest.mark.parametrize("url_name", LIQ_URLS_SIN_PK)
 def test_liquidacion_gerente_200(client_gerente, url_name):
-    assert client_gerente.get(reverse(f"staff:{url_name}")).status_code == 200
+    extra = {"date": "2026-08-01"} if url_name == "liquidacion_create" else {}
+    assert client_gerente.get(reverse(f"staff:{url_name}"), extra).status_code == 200
 
 
 @pytest.mark.parametrize("url_name", LIQ_URLS_SIN_PK)
 def test_liquidacion_admin_200(client_admin, url_name):
-    assert client_admin.get(reverse(f"staff:{url_name}")).status_code == 200
+    extra = {"date": "2026-08-01"} if url_name == "liquidacion_create" else {}
+    assert client_admin.get(reverse(f"staff:{url_name}"), extra).status_code == 200
+
+
+def test_liquidacion_create_sin_parametro_redirige_a_fecha(client_gerente):
+    """El template asume ?date=; sin parámetro se redirige a ?date=hoy."""
+    response = client_gerente.get(reverse("staff:liquidacion_create"))
+    assert response.status_code == 302
+    assert "?date=" in response.url
 
 
 @pytest.mark.parametrize("url_name", ["liquidacion_detail"])
@@ -160,12 +169,12 @@ def test_liquidacion_detail_transiciones_via_post(client_gerente, bartender_user
     liqui, _ = Liquidacion.build_or_update(emp, fecha)
 
     url = reverse("staff:liquidacion_detail", args=[liqui.pk])
-    resp = client_gerente.post(url, {"action": "marcar_liquidada"})
+    resp = client_gerente.post(url, {"action": "liquidar"})
     assert resp.status_code == 302
     liqui.refresh_from_db()
     assert liqui.status == Liquidacion.Status.LIQUIDADA
 
-    resp = client_gerente.post(url, {"action": "marcar_pagada"})
+    resp = client_gerente.post(url, {"action": "pagar"})
     assert resp.status_code == 302
     liqui.refresh_from_db()
     assert liqui.status == Liquidacion.Status.PAGADA

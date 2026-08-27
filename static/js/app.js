@@ -394,11 +394,15 @@
     if (recipeEditor && recipeCheckbox) {
         var recipeRows = document.getElementById("recipe-rows");
         var recipeTemplate = document.getElementById("recipe-row-template");
+        var rawMaterialCheckbox = document.getElementById("id_is_raw_material");
 
         function recipeSync() {
-            recipeEditor.style.display = recipeCheckbox.checked ? "" : "none";
+            // Si es materia prima, la receta no aplica: el editor queda oculto
+            var isRaw = rawMaterialCheckbox ? rawMaterialCheckbox.checked : false;
+            recipeEditor.style.display = (recipeCheckbox.checked && !isRaw) ? "" : "none";
         }
         recipeCheckbox.addEventListener("change", recipeSync);
+        if (rawMaterialCheckbox) rawMaterialCheckbox.addEventListener("change", recipeSync);
         recipeSync();
 
         // Agregar fila (clona la plantilla con todas las opciones)

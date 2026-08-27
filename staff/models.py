@@ -126,7 +126,7 @@ class Liquidacion(models.Model):
         """Crea la liquidación del empleado en la fecha (horas × tarifa) o
         regenera la existente SI está en borrador (nunca duplica)."""
         hours = cls.hours_for(employee, date)
-        rate = employee.hourly_rate
+        rate = Decimal(employee.hourly_rate)  # coacción: instancias creadas con str
         gross = (hours * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         liqui, created = cls.objects.get_or_create(
             employee=employee,
@@ -145,6 +145,16 @@ class Liquidacion(models.Model):
             liqui.generated_by = generated_by
             liqui.save(update_fields=["hours_worked", "hourly_rate", "gross_amount", "generated_by"])
         return liqui, created
+
+    @property
+    def created_by(self):
+        """Alias de generated_by para el template liquidacion_detail.
+
+        Si no se registró quién generó la liquidación (None), cae al usuario
+        del empleado para evitar resoluciones inválidas en el template
+        (`generated_by.username` con None crashea en filtros de template).
+        """
+        return self.generated_by or self.employee.user
 
     def marcar_liquidada(self, user=None):
         """Transición borrador → liquidada."""

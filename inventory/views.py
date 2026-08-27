@@ -96,6 +96,24 @@ class CategoryDeleteView(RoleRequiredMixin, DeleteView):
         return HttpResponseRedirect(self.get_success_url())
 
 
+class MaterialListView(RoleRequiredMixin, ListView):
+    """Listado de materia prima (productos marcados is_raw_material=True)."""
+
+    model = Product
+    template_name = "inventory/material_list.html"
+    context_object_name = "materials"
+    roles = ["gerente", "admin", "bartender"]
+    paginate_by = 25
+
+    def get_queryset(self):
+        # Incluye activos e inactivos: el template muestra el badge de estado.
+        return (
+            Product.objects.filter(is_raw_material=True)
+            .select_related("category")
+            .order_by("name")
+        )
+
+
 class ProductListView(RoleRequiredMixin, ListView):
     model = Product
     template_name = "inventory/product_list.html"
@@ -103,7 +121,12 @@ class ProductListView(RoleRequiredMixin, ListView):
     roles = ["gerente", "admin", "bartender", "cajero"]
 
     def get_queryset(self):
-        qs = Product.objects.filter(is_active=True).select_related("category").order_by("category__name", "name")
+        # Solo productos vendibles: la materia prima tiene su propia lista.
+        qs = (
+            Product.objects.filter(is_active=True, is_raw_material=False)
+            .select_related("category")
+            .order_by("category__name", "name")
+        )
         search = self.request.GET.get("q", "").strip()
         if search:
             qs = qs.filter(name__icontains=search)
@@ -128,7 +151,7 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["ingredient_products"] = (
-            Product.objects.filter(is_active=True).order_by("name")
+            Product.objects.filter(is_active=True).order_by("-is_raw_material", "name")
         )
         return ctx
 
@@ -148,7 +171,7 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        qs = Product.objects.filter(is_active=True).order_by("name")
+        qs = Product.objects.filter(is_active=True).order_by("-is_raw_material", "name")
         if self.object and self.object.pk:
             qs = qs.exclude(pk=self.object.pk)  # el propio producto no es ingrediente
         ctx["ingredient_products"] = qs

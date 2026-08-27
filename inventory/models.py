@@ -58,6 +58,10 @@ class Product(models.Model):
         "elaborado (con receta)", default=False,
         help_text="Si está activo, al vender se descuenta la materia prima (RecipeItem).",
     )
+    is_raw_material = models.BooleanField(
+        "materia prima", default=False,
+        help_text="Marca el producto como materia prima (se lista en Materiales).",
+    )
     is_active = models.BooleanField("activo", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

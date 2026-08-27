@@ -287,3 +287,81 @@ def test_product_form_contexto_ingredient_products(client_gerente, category):
     assert response.status_code == 200
     ids = [p.pk for p in response.context["ingredient_products"]]
     assert composed.pk not in ids  # el propio producto no es un ingrediente posible
+
+
+# ---------------------------------------------------------------------------
+# Separación materia prima / productos vendibles
+# ---------------------------------------------------------------------------
+
+def test_product_list_no_muestra_materia_prima(client_gerente, category):
+    """product_list solo muestra productos vendibles (is_raw_material=False)."""
+    Product.objects.create(
+        name="Vendible", category=category, sale_price=Decimal("50"), is_active=True,
+    )
+    Product.objects.create(
+        name="Materia X", category=category, sale_price=Decimal("10"),
+        is_active=True, is_raw_material=True,
+    )
+    response = client_gerente.get(reverse("inventory:product_list"))
+    names = [p.name for p in response.context["products"]]
+    assert "Vendible" in names
+    assert "Materia X" not in names
+
+
+def test_material_list_muestra_solo_materia_prima(client_gerente, category):
+    """material_list lista solo is_raw_material=True (con stock/costo)."""
+    Product.objects.create(
+        name="Vendible", category=category, sale_price=Decimal("50"), is_active=True,
+    )
+    Product.objects.create(
+        name="Harina", category=category, sale_price=Decimal("10"),
+        purchase_price=Decimal("8"), stock_current=Decimal("20"),
+        stock_min=Decimal("5"), is_raw_material=True,
+    )
+    response = client_gerente.get(reverse("inventory:material_list"))
+    assert response.status_code == 200
+    names = [m.name for m in response.context["materials"]]
+    assert names == ["Harina"]
+    assert "Vendible" not in names
+    assert response.context["materials"][0].stock_current == Decimal("20")
+
+
+def test_material_list_permisos(client_gerente, client_bartender, client_cajero, category):
+    """material_list: gerente y bartender OK; cajero denegado."""
+    assert client_gerente.get(reverse("inventory:material_list")).status_code == 200
+    assert client_bartender.get(reverse("inventory:material_list")).status_code == 200
+    assert_access_denied(client_cajero.get(reverse("inventory:material_list")))
+
+
+def test_product_form_rechaza_elaborado_y_materia_prima(category):
+    """Un producto NO puede ser a la vez elaborado (receta) y materia prima."""
+    from inventory.forms import ProductForm
+
+    form = ProductForm(
+        data={
+            "name": "Imposible", "category": category.id, "unit": "unidad",
+            "sale_price": "50", "is_composed": True, "is_raw_material": True,
+            "ingredient_id": ["1"], "quantity": ["1"],
+        }
+    )
+    assert not form.is_valid()
+    assert "is_raw_material" in form.errors
+
+
+def test_seed_demo_marca_materia_prima(category):
+    """seed_demo marca como materia prima: Fernet, Coca, Masa, Salsa, Muzzarella."""
+    from django.core.management import call_command
+
+    for name in ("Fernet", "Gaseosa cola 500ml", "Masa de pizza",
+                 "Salsa de tomate", "Muzzarella"):
+        Product.objects.filter(name=name).update(is_raw_material=False)
+
+    call_command("seed_demo", verbosity=0)
+
+    for name in ("Fernet", "Gaseosa cola 500ml", "Masa de pizza",
+                 "Salsa de tomate", "Muzzarella"):
+        product = Product.objects.get(name=name)
+        assert product.is_raw_material is True, name
+    # Los elaborados NO son materia prima
+    assert Product.objects.get(name="Fernet con coca").is_raw_material is False
+    assert Product.objects.get(name="Pizza muzarella").is_raw_material is False

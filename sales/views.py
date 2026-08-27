@@ -100,7 +100,7 @@ class PosView(RoleRequiredMixin, View):
 
     def get(self, request):
         products = list(
-            Product.objects.filter(is_active=True)
+            Product.objects.filter(is_active=True, is_raw_material=False)
             .select_related("category")
             .prefetch_related("recipe_items__ingredient")
             .order_by("category__name", "name")

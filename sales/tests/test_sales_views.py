@@ -398,3 +398,22 @@ def test_pos_context_servings_para_elaborados(client_cajero, category):
     assert servings[comp.pk] == 3  # min(5, 3)
     comp_obj = next(p for p in response.context["products"] if p.pk == comp.pk)
     assert comp_obj.is_composed is True
+
+
+def test_pos_excluye_materia_prima(client_cajero, category):
+    """El POS no ofrece materia prima para vender directo."""
+    from inventory.models import Product
+
+    Product.objects.create(
+        name="Vendible Pos", category=category, sale_price=Decimal("50"),
+        stock_current=Decimal("10"), is_active=True,
+    )
+    Product.objects.create(
+        name="Materia Pos", category=category, sale_price=Decimal("10"),
+        stock_current=Decimal("50"), is_active=True, is_raw_material=True,
+    )
+    response = client_cajero.get(reverse("sales:pos"))
+    assert response.status_code == 200
+    names = [p.name for p in response.context["products"]]
+    assert "Vendible Pos" in names
+    assert "Materia Pos" not in names

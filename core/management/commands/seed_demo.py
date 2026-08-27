@@ -128,9 +128,22 @@ class Command(BaseCommand):
                     "sale_price": Decimal(sale),
                     "stock_current": Decimal(stock),
                     "stock_min": Decimal(stock_min),
+                    "is_raw_material": True,
                 },
             )
+            if not ingredient.is_raw_material:
+                ingredient.is_raw_material = True
+                ingredient.save(update_fields=["is_raw_material"])
             self.stdout.write(f"  - ingrediente {ingredient.name}")
+
+        # Materia prima adicional: productos vendibles que también se usan en
+        # recetas (dejan de venderse directo; se venden vía el elaborado).
+        for name in ("Fernet", "Gaseosa cola 500ml"):
+            product = Product.objects.filter(name=name).first()
+            if product and not product.is_raw_material:
+                product.is_raw_material = True
+                product.save(update_fields=["is_raw_material"])
+                self.stdout.write(f"  - {product.name} marcado como materia prima")
 
         self.stdout.write(self.style.MIGRATE_HEADING("Creando productos elaborados (con receta)..."))
         COMPOSED = [
