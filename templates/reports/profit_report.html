@@ -144,7 +144,10 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
+            scales: {
+                x: { ticks: { color: "#64748b" } },
+                y: { beginAtZero: true, ticks: { color: "#64748b" } }
+            }
         }
     });
 })();

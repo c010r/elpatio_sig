@@ -98,6 +98,9 @@ a { color: var(--ep-link); transition: color var(--ep-transition); }
 a:hover { color: var(--ep-link-hover); }
 
 .text-muted { color: var(--ep-ink-muted) !important; }
+.text-success { color: var(--ep-emerald-strong) !important; }
+.text-danger { color: var(--ep-rose) !important; }
+.text-warning { color: var(--ep-amber) !important; }
 
 /* ---------- Botones ---------- */
 .btn {
@@ -292,7 +295,7 @@ a:hover { color: var(--ep-link-hover); }
     font-weight: 700;
     border-left-color: var(--ep-emerald);
 }
-.sidebar-nav .nav-link.active .nav-icon { color: var(--ep-emerald); }
+.sidebar-nav .nav-link.active .nav-icon { color: var(--ep-emerald-ink); }
 
 .sidebar-nav .nav-icon {
     font-size: 1rem;
@@ -336,7 +339,7 @@ a:hover { color: var(--ep-link-hover); }
 
 .breadcrumb { font-size: .87rem; margin: 0; }
 .breadcrumb-item a { text-decoration: none; font-weight: 500; color: var(--ep-ink-muted); }
-.breadcrumb-item a:hover { color: var(--ep-emerald); }
+.breadcrumb-item a:hover { color: var(--ep-link-hover); }
 .breadcrumb-item.active { color: var(--ep-ink-soft); }
 
 .date-pill {
@@ -597,7 +600,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     border-color: var(--ep-emerald);
     box-shadow: 0 0 0 .2rem rgba(5, 150, 105, .14);
 }
-.form-check-input:checked { background-color: var(--ep-emerald); border-color: var(--ep-emerald); }
+.form-check-input:checked { background-color: var(--ep-btn-bg); border-color: var(--ep-btn-bg); }
 .form-check-input:focus { box-shadow: 0 0 0 .2rem rgba(5, 150, 105, .14); border-color: var(--ep-emerald); }
 .form-label { font-weight: 600; color: var(--ep-ink-soft); font-size: .84rem; }
 .form-control::placeholder { color: var(--ep-ink-muted); }
@@ -637,7 +640,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     align-items: center;
     justify-content: center;
     font-size: 2.1rem;
-    color: var(--ep-ink-muted);
+    color: var(--ep-ink-soft);
     overflow: hidden;
     border-bottom: 1px solid var(--ep-border);
 }
@@ -921,7 +924,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     outline: none;
 }
 .diff-negative { color: var(--ep-rose); font-weight: 600; }
-.diff-positive { color: var(--ep-emerald); font-weight: 600; }
+.diff-positive { color: var(--ep-link); font-weight: 600; }
 .diff-zero { color: var(--ep-ink-muted); }
 
 /* ==========================================================================
@@ -1155,6 +1158,10 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 /* Badges info/primary y outline-danger en dark (variantes translúcidas AA) */
 [data-theme="dark"] .badge.bg-info { background: rgba(56, 189, 248, .15); color: #7dd3fc; }
 [data-theme="dark"] .badge.bg-primary { background: rgba(59, 130, 246, .15); color: #93c5fd; }
+
+/* Ticket anulado y empty-state en dark: rose oscuro + icono claro (AA) */
+[data-theme="dark"] .ticket-voided { background: #be123c; }
+[data-theme="dark"] .empty-state .empty-icon { color: var(--ep-ink-soft); }
 
 [data-theme="dark"] .btn-outline-danger {
     --bs-btn-color: var(--ep-rose);
