@@ -399,6 +399,8 @@ a:hover { color: var(--ep-link-hover); }
     border-radius: var(--ep-radius-pill);
     border: 1px solid var(--ep-border);
     background: var(--ep-surface);
+    /* Bootstrap .btn pone color negro; el nombre de usuario debe seguir el tema */
+    color: var(--ep-ink);
     font-weight: 600;
     font-size: .86rem;
     transition: border-color var(--ep-transition), box-shadow var(--ep-transition);
