@@ -326,11 +326,21 @@ def test_material_list_muestra_solo_materia_prima(client_gerente, category):
     assert response.context["materials"][0].stock_current == Decimal("20")
 
 
-def test_material_list_permisos(client_gerente, client_bartender, client_cajero, category):
+def test_material_list_permisos(gerente_user, bartender_user, cajero_user, category):
     """material_list: gerente y bartender OK; cajero denegado."""
-    assert client_gerente.get(reverse("inventory:material_list")).status_code == 200
-    assert client_bartender.get(reverse("inventory:material_list")).status_code == 200
-    assert_access_denied(client_cajero.get(reverse("inventory:material_list")))
+    from django.test import Client
+
+    c = Client()
+    c.force_login(gerente_user)
+    assert c.get(reverse("inventory:material_list")).status_code == 200
+
+    c2 = Client()
+    c2.force_login(bartender_user)
+    assert c2.get(reverse("inventory:material_list")).status_code == 200
+
+    c3 = Client()
+    c3.force_login(cajero_user)
+    assert_access_denied(c3.get(reverse("inventory:material_list")))
 
 
 def test_product_form_rechaza_elaborado_y_materia_prima(category):
