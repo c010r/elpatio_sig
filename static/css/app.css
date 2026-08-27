@@ -602,6 +602,28 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 }
 .form-check-input:checked { background-color: var(--ep-btn-bg); border-color: var(--ep-btn-bg); }
 .form-check-input:focus { box-shadow: 0 0 0 .2rem rgba(5, 150, 105, .14); border-color: var(--ep-emerald); }
+/* Checkboxes SIEMPRE visibles: caja clara en light, caja más clara que el fondo en dark,
+   borde contrastado en ambos, y check blanco cuando está marcado. */
+.form-check-input {
+    background-color: var(--ep-surface);
+    border: 1px solid var(--ep-border-strong);
+    width: 1.15em;
+    height: 1.15em;
+    cursor: pointer;
+}
+.form-check-input:checked {
+    background-color: var(--ep-btn-bg);
+    border-color: var(--ep-btn-bg);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+[data-theme="dark"] .form-check-input {
+    background-color: var(--ep-surface-2);
+    border-color: #64748b;
+}
+[data-theme="dark"] .form-check-input:checked {
+    background-color: var(--ep-btn-bg);
+    border-color: var(--ep-btn-bg);
+}
 .form-label { font-weight: 600; color: var(--ep-ink-soft); font-size: .84rem; }
 .form-control::placeholder { color: var(--ep-ink-muted); }
 .help-text, .form-text { color: var(--ep-ink-muted); font-size: .78rem; }
