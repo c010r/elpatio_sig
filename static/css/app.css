@@ -172,6 +172,10 @@ a:hover { color: var(--ep-link-hover); }
 .card {
     border: 1px solid var(--ep-border);
     background-color: var(--ep-surface);
+    /* Bootstrap pone .card { color: var(--bs-body-color) } (negro) — en dark
+       eso deja TODO el texto de las cards negro sobre fondo oscuro. Pisamos
+       el color para que herede el token del tema. */
+    color: var(--ep-ink);
     border-radius: var(--ep-radius-md);
     box-shadow: var(--ep-shadow-sm);
     transition: box-shadow var(--ep-transition), transform var(--ep-transition);
