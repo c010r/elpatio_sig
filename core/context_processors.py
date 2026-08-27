@@ -21,12 +21,17 @@ def global_context(request):
         except Exception:
             ctx["open_cash_register"] = None
 
-        # Stock bajo (contador para el sidebar)
+        # Stock bajo (contador para el sidebar): productos simples por debajo
+        # del mínimo + elaborados cuya materia prima está baja. Coincide con
+        # StockLowView (que lista ambos).
         try:
-            from inventory.models import Product
+            from inventory.models import Product, composed_products_with_low_ingredients
 
             ctx["low_stock_count"] = (
-                Product.objects.filter(is_active=True, stock_current__lte=F("stock_min")).count()
+                Product.objects.filter(
+                    is_active=True, is_composed=False, stock_current__lte=F("stock_min")
+                ).count()
+                + len(composed_products_with_low_ingredients())
             )
         except Exception:
             ctx["low_stock_count"] = 0

@@ -1,4 +1,4 @@
-﻿{% load django_bootstrap5 %}
+{% load django_bootstrap5 %}
 {% load static %}
 <!DOCTYPE html>
 <html lang="es">
@@ -119,6 +119,9 @@
             </a>
             <a href="{% url 'staff:my_shift' %}" class="nav-link {% if active == 'my_shift' %}active{% endif %}">
                 <span class="nav-icon"><i class="bi bi-flag"></i></span><span>Mi turno</span>
+            </a>
+            <a href="{% url 'staff:liquidacion_list' %}" class="nav-link {% if active == 'liquidacion_list' or active == 'liquidacion_create' or active == 'liquidacion_detail' %}active{% endif %}">
+                <span class="nav-icon"><i class="bi bi-receipt-cutoff"></i></span><span>Liquidaciones</span>
             </a>
             <div class="sidebar-section">Reportes</div>
             <a href="{% url 'reports:sales_report' %}" class="nav-link {% if active == 'sales_report' %}active{% endif %}">

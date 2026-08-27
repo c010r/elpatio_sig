@@ -216,7 +216,8 @@ class StockLowView(RoleRequiredMixin, ListView):
 
     def get_queryset(self):
         # Excluye elaborados (is_composed): su stock es la materia prima,
-        # controlada por los ingredientes de la receta.
+        # controlada por los ingredientes de la receta (se listan aparte en
+        # composed_low cuando su materia prima está baja).
         return (
             Product.objects.filter(
                 is_active=True, is_composed=False, stock_current__lte=F("stock_min")
@@ -224,3 +225,10 @@ class StockLowView(RoleRequiredMixin, ListView):
             .select_related("category")
             .order_by(F("stock_current") - F("stock_min"))
         )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from .models import composed_products_with_low_ingredients
+
+        context["composed_low"] = composed_products_with_low_ingredients()
+        return context

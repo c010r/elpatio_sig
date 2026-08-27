@@ -17,4 +17,8 @@ urlpatterns = [
     path("turnos/<int:pk>/editar/", views.ShiftUpdateView.as_view(), name="shift_update"),
     path("turnos/<int:pk>/eliminar/", views.ShiftDeleteView.as_view(), name="shift_delete"),
     path("mi-turno/", views.MyShiftView.as_view(), name="my_shift"),
+    path("liquidaciones/", views.LiquidacionListView.as_view(), name="liquidacion_list"),
+    path("liquidaciones/crear/", views.LiquidacionCreateView.as_view(), name="liquidacion_create"),
+    path("liquidaciones/csv/", views.LiquidacionCsvView.as_view(), name="liquidacion_csv"),
+    path("liquidaciones/<int:pk>/", views.LiquidacionDetailView.as_view(), name="liquidacion_detail"),
 ]

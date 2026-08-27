@@ -7,7 +7,7 @@ Crea los 4 grupos (admin, gerente, bartender, cajero), usuarios demo con
 contraseña "demo12345", categorías, productos (precios en UYU), mesas,
 1 proveedor, 1 cliente y las configuraciones de fidelización y happy hour.
 """
-from datetime import time
+from datetime import time, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import Group, User
@@ -256,5 +256,53 @@ class Command(BaseCommand):
         self.stdout.write(
             f"  - imprimir ticket en POS: {'sí' if sale_config.pos_print_ticket else 'no'}"
         )
+
+        self.stdout.write(self.style.MIGRATE_HEADING("Creando empleados demo..."))
+        from django.utils import timezone
+
+        from staff.models import Employee, Shift
+
+        empleados_demo = [
+            ("bartender", Employee.Position.BARTENDER, Decimal("150")),
+            ("cajero", Employee.Position.CAJERO, Decimal("170")),
+            ("gerente", Employee.Position.GERENTE, Decimal("250")),
+        ]
+        created_employees = []
+        for username, position, hourly_rate in empleados_demo:
+            user = User.objects.get(username=username)
+            employee, _ = Employee.objects.get_or_create(
+                user=user,
+                defaults={
+                    "position": position,
+                    "hire_date": timezone.localdate() - timedelta(days=60),
+                    "hourly_rate": hourly_rate,
+                },
+            )
+            created_employees.append(employee)
+            self.stdout.write(
+                f"  - {employee} ({employee.get_position_display()}, "
+                f"{employee.hourly_rate} UYU/hora)"
+            )
+
+        self.stdout.write(self.style.MIGRATE_HEADING("Creando turnos demo (hoy y ayer)..."))
+        turnos_demo = [
+            # (empleado, día, inicio, fin)
+            ("bartender", 0, time(10, 0), time(18, 0)),
+            ("cajero", 0, time(10, 0), time(18, 0)),
+            ("gerente", 0, time(9, 0), time(17, 0)),
+            ("bartender", 1, time(10, 0), time(18, 0)),
+            ("cajero", 1, time(14, 0), time(22, 0)),
+        ]
+        for username, days_ago, start, end in turnos_demo:
+            employee = next(e for e in created_employees if e.user.username == username)
+            date = timezone.localdate() - timedelta(days=days_ago)
+            shift, _ = Shift.objects.get_or_create(
+                employee=employee, date=date, start_time=start,
+                defaults={"end_time": end, "note": "Turno demo"},
+            )
+            self.stdout.write(
+                f"  - {employee} {date} {start:%H:%M}-{end:%H:%M} "
+                f"({shift.worked_hours:.2f} h)"
+            )
 
         self.stdout.write(self.style.SUCCESS("Seed demo completado (idempotente)."))

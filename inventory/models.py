@@ -122,6 +122,28 @@ class RecipeItem(models.Model):
         return f"{self.quantity} de {self.ingredient.name} para {self.product.name}"
 
 
+def composed_products_with_low_ingredients():
+    """Productos elaborados cuya MATERIA PRIMA está baja (<= stock mínimo).
+
+    Devuelve una lista de (product, [ingredientes_bajos]). El stock de un
+    elaborado se controla por sus ingredientes, por eso este helper alimenta
+    el "stock bajo" y su contador.
+    """
+    result = []
+    products = Product.objects.filter(is_active=True, is_composed=True).prefetch_related(
+        "recipe_items__ingredient"
+    )
+    for p in products:
+        low = [
+            ri.ingredient
+            for ri in p.recipe_items.all()
+            if ri.ingredient.is_active and ri.ingredient.stock_current <= ri.ingredient.stock_min
+        ]
+        if low:
+            result.append((p, low))
+    return result
+
+
 class StockMovement(models.Model):
     """Movimiento de stock con cantidad con signo. apply() actualiza stock_current."""
 

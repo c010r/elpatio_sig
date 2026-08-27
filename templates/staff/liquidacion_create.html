@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Nueva liquidación — El Patio SIG{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'staff:liquidacion_list' %}">Liquidaciones</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Nueva</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <h1 class="h4 mb-0">🧾 Nueva liquidación</h1>
+            <a href="{% url 'staff:liquidacion_list' %}" class="btn btn-outline-secondary btn-sm">← Volver</a>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">📅 Elegí el día a liquidar</h5>
+            </div>
+            <div class="card-body py-3">
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-auto">
+                        <label class="form-label small mb-1" for="date">Fecha</label>
+                        <input type="date" id="date" name="date" class="form-control" value="{{ selected_date|default:request.GET.date }}">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Ver horas del día</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if selected_date and not rows %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-1"></i>No hay turnos registrados para el <strong>{{ selected_date|date:"d/m/Y"|default:selected_date }}</strong>. Probá con otra fecha.
+        </div>
+        {% endif %}
+
+        {% if rows %}
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">👷 Empleados del día — <span class="text-muted">{{ selected_date|date:"d/m/Y"|default:selected_date }}</span></h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Empleado</th>
+                                <th class="text-center">Horas trabajadas</th>
+                                <th class="text-end">Tarifa/hora</th>
+                                <th class="text-end">Bruto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows %}
+                            <tr>
+                                <td class="fw-semibold">{{ row.employee.user.get_full_name|default:row.employee.user.username }}</td>
+                                <td class="text-center">{{ row.hours_worked|floatformat:2 }}</td>
+                                <td class="text-end">{{ row.hourly_rate|money }}</td>
+                                <td class="text-end fw-semibold">{{ row.gross_amount|money }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">
+                                    <div class="empty-state">
+                                        <div class="empty-icon"><i class="bi bi-clock-history"></i></div>
+                                        <div class="empty-title">Sin turnos este día</div>
+                                        <div class="empty-text">No hay turnos registrados para generar liquidaciones.</div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <form method="post" data-confirm="¿Generar la liquidación del {{ selected_date|date:'d/m/Y'|default:selected_date }} para {{ rows|length }} empleado(s)?">
+                    {% csrf_token %}
+                    <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d'|default:selected_date }}">
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Generar liquidación</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

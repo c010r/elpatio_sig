@@ -1,10 +1,13 @@
 """
-staff — Modelos de empleados y turnos.
+staff — Modelos de empleados, turnos y liquidaciones.
 """
 from datetime import datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class Employee(models.Model):
@@ -68,3 +71,92 @@ class Shift(models.Model):
         if end <= start:
             end += timedelta(days=1)
         return (end - start).total_seconds() / 3600
+
+
+class Liquidacion(models.Model):
+    """Liquidación DIARIA de un empleado por horas trabajadas (horas × tarifa).
+
+    La tarifa se congela al generarse (hourly_rate del Employee en ese
+    momento). Estados: borrador → liquidada → pagada.
+    """
+
+    class Status(models.TextChoices):
+        BORRADOR = "borrador", "borrador"
+        LIQUIDADA = "liquidada", "liquidada"
+        PAGADA = "pagada", "pagada"
+
+    employee = models.ForeignKey(
+        Employee, on_delete=models.PROTECT,
+        related_name="liquidaciones", verbose_name="empleado",
+    )
+    date = models.DateField("fecha")
+    hours_worked = models.DecimalField("horas trabajadas", max_digits=10, decimal_places=2)
+    hourly_rate = models.DecimalField("tarifa por hora", max_digits=10, decimal_places=2)
+    gross_amount = models.DecimalField("monto bruto", max_digits=10, decimal_places=2)
+    status = models.CharField("estado", max_length=20, choices=Status.choices, default=Status.BORRADOR)
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="liquidaciones_generadas", verbose_name="generada por",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField("pagada el", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "liquidación"
+        verbose_name_plural = "liquidaciones"
+        ordering = ["-date", "employee__user__username"]
+        unique_together = ("employee", "date")
+
+    def __str__(self):
+        return f"Liquidación {self.employee} - {self.date} ({self.get_status_display()})"
+
+    @classmethod
+    def hours_for(cls, employee, date):
+        """Horas trabajadas del empleado en la fecha (suma de Shift.worked_hours
+        de turnos con fin registrado)."""
+        total = Decimal("0")
+        for shift in Shift.objects.filter(employee=employee, date=date, end_time__isnull=False):
+            hours = shift.worked_hours
+            if hours is not None:
+                total += Decimal(str(hours))
+        return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @classmethod
+    def build_or_update(cls, employee, date, generated_by=None):
+        """Crea la liquidación del empleado en la fecha (horas × tarifa) o
+        regenera la existente SI está en borrador (nunca duplica)."""
+        hours = cls.hours_for(employee, date)
+        rate = employee.hourly_rate
+        gross = (hours * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        liqui, created = cls.objects.get_or_create(
+            employee=employee,
+            date=date,
+            defaults={
+                "hours_worked": hours,
+                "hourly_rate": rate,
+                "gross_amount": gross,
+                "generated_by": generated_by,
+            },
+        )
+        if not created and liqui.status == cls.Status.BORRADOR:
+            liqui.hours_worked = hours
+            liqui.hourly_rate = rate
+            liqui.gross_amount = gross
+            liqui.generated_by = generated_by
+            liqui.save(update_fields=["hours_worked", "hourly_rate", "gross_amount", "generated_by"])
+        return liqui, created
+
+    def marcar_liquidada(self, user=None):
+        """Transición borrador → liquidada."""
+        if self.status != self.Status.BORRADOR:
+            raise ValidationError("Solo las liquidaciones en borrador pueden marcarse como liquidadas.")
+        self.status = self.Status.LIQUIDADA
+        self.save(update_fields=["status"])
+
+    def marcar_pagada(self, user=None):
+        """Transición liquidada → pagada (registra paid_at)."""
+        if self.status != self.Status.LIQUIDADA:
+            raise ValidationError("Solo las liquidaciones liquidadas pueden marcarse como pagadas.")
+        self.status = self.Status.PAGADA
+        self.paid_at = timezone.now()
+        self.save(update_fields=["status", "paid_at"])

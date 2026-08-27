@@ -1,18 +1,29 @@
 """
-staff — Vistas de empleados, turnos y "mi turno".
+staff — Vistas de empleados, turnos, "mi turno" y liquidaciones diarias.
 """
+import csv
+import logging
+from datetime import date as date_cls
+from decimal import ROUND_HALF_UP, Decimal
+
 from django.contrib import messages
-from django.http import HttpResponseRedirect
-from django.shortcuts import redirect, render
+from django.core.exceptions import ValidationError
+from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
-from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from core.mixins import RoleRequiredMixin
+from reports.views import safe_cell
 
 from .forms import EmployeeForm, ShiftForm
-from .models import Employee, Shift
+from .models import Employee, Liquidacion, Shift
+
+audit = logging.getLogger("audit")
+
+STAFF_ROLES = ["gerente", "admin"]
 
 
 class EmployeeListView(RoleRequiredMixin, ListView):
@@ -178,3 +189,181 @@ class MyShiftView(RoleRequiredMixin, View):
         else:
             messages.error(request, "Acción inválida.")
         return redirect("staff:my_shift")
+
+
+# ---------------------------------------------------------------------------
+# Liquidaciones diarias (gerente/admin)
+# ---------------------------------------------------------------------------
+
+class LiquidacionListView(RoleRequiredMixin, ListView):
+    """Historial de liquidaciones con filtros (fechas, empleado, estado)."""
+
+    model = Liquidacion
+    template_name = "staff/liquidacion_list.html"
+    context_object_name = "liquidaciones"
+    roles = STAFF_ROLES
+    paginate_by = 25
+
+    def get_queryset(self):
+        qs = (
+            Liquidacion.objects.select_related("employee__user", "generated_by")
+            .order_by("-date", "employee__user__username")
+        )
+        date_from = self.request.GET.get("date_from")
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+        date_to = self.request.GET.get("date_to")
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
+        employee_id = self.request.GET.get("employee")
+        if employee_id and employee_id.isdigit():
+            qs = qs.filter(employee_id=int(employee_id))
+        status = self.request.GET.get("status")
+        if status in dict(Liquidacion.Status.choices):
+            qs = qs.filter(status=status)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["employees"] = Employee.objects.filter(is_active=True).select_related("user").order_by("user__username")
+        return ctx
+
+
+class LiquidacionCreateView(RoleRequiredMixin, View):
+    """Genera liquidaciones diarias: previsualiza horas × tarifa por empleado
+    y crea/actualiza borradores para los empleados con horas > 0."""
+
+    roles = STAFF_ROLES
+
+    def _parse_date(self, request):
+        raw = request.GET.get("date") or request.POST.get("date") or timezone.localdate().isoformat()
+        try:
+            return date_cls.fromisoformat(raw)
+        except ValueError:
+            return timezone.localdate()
+
+    def _preview(self, date):
+        rows = []
+        for employee in (
+            Employee.objects.filter(is_active=True).select_related("user").order_by("user__username")
+        ):
+            hours = Liquidacion.hours_for(employee, date)
+            rate = employee.hourly_rate
+            gross = (hours * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            existing = Liquidacion.objects.filter(employee=employee, date=date).first()
+            rows.append(
+                {
+                    "employee": employee,
+                    "hours": hours,
+                    "rate": rate,
+                    "gross": gross,
+                    "existing": existing,
+                }
+            )
+        return rows
+
+    def get(self, request):
+        date = self._parse_date(request)
+        return render(
+            request,
+            "staff/liquidacion_create.html",
+            {"date": date, "rows": self._preview(date)},
+        )
+
+    def post(self, request):
+        date = self._parse_date(request)
+        created = updated = 0
+        for employee in Employee.objects.filter(is_active=True):
+            hours = Liquidacion.hours_for(employee, date)
+            if hours <= 0:
+                continue  # solo se liquidan empleados con horas trabajadas > 0
+            liqui, was_created = Liquidacion.build_or_update(employee, date, generated_by=request.user)
+            created += 1 if was_created else 0
+            updated += 0 if was_created else 1
+        audit.info(
+            "liquidacion_generada por=%s fecha=%s creadas=%s actualizadas=%s",
+            request.user.username, date, created, updated,
+        )
+        if created or updated:
+            messages.success(
+                request,
+                f"Liquidaciones generadas para {date}: {created} creadas, {updated} actualizadas.",
+            )
+        else:
+            messages.info(request, f"Ningún empleado con horas trabajadas el {date}.")
+        return redirect("staff:liquidacion_list")
+
+
+class LiquidacionDetailView(RoleRequiredMixin, DetailView):
+    model = Liquidacion
+    template_name = "staff/liquidacion_detail.html"
+    context_object_name = "liquidacion"
+    roles = STAFF_ROLES
+
+    def get_queryset(self):
+        return Liquidacion.objects.select_related("employee__user", "generated_by")
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        action = request.POST.get("action")
+        try:
+            if action == "marcar_liquidada":
+                self.object.marcar_liquidada(user=request.user)
+                audit.info(
+                    "liquidacion_marcada_liquidada por=%s id=%s empleado=%s fecha=%s",
+                    request.user.username, self.object.pk, self.object.employee_id, self.object.date,
+                )
+                messages.success(request, "Liquidación marcada como liquidada.")
+            elif action == "marcar_pagada":
+                self.object.marcar_pagada(user=request.user)
+                audit.info(
+                    "liquidacion_marcada_pagada por=%s id=%s empleado=%s fecha=%s",
+                    request.user.username, self.object.pk, self.object.employee_id, self.object.date,
+                )
+                messages.success(request, "Liquidación marcada como pagada.")
+            else:
+                messages.error(request, "Acción inválida.")
+        except ValidationError as exc:
+            messages.error(request, "; ".join(getattr(exc, "messages", [str(exc)])))
+        return redirect("staff:liquidacion_detail", pk=self.object.pk)
+
+
+class LiquidacionCsvView(RoleRequiredMixin, View):
+    """Exporta el listado filtrado de liquidaciones a CSV (safe_cell)."""
+
+    roles = STAFF_ROLES
+
+    def get(self, request):
+        qs = (
+            Liquidacion.objects.select_related("employee__user")
+            .order_by("-date", "employee__user__username")
+        )
+        date_from = request.GET.get("date_from")
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+        date_to = request.GET.get("date_to")
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
+        employee_id = request.GET.get("employee")
+        if employee_id and employee_id.isdigit():
+            qs = qs.filter(employee_id=int(employee_id))
+        status = request.GET.get("status")
+        if status in dict(Liquidacion.Status.choices):
+            qs = qs.filter(status=status)
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="liquidaciones.csv"'
+        writer = csv.writer(response)
+        writer.writerow(["Empleado", "Fecha", "Horas", "Tarifa hora", "Bruto", "Estado"])
+        for liq in qs:
+            writer.writerow(
+                [
+                    safe_cell(liq.employee.user.get_full_name() or liq.employee.user.username),
+                    liq.date.isoformat(),
+                    liq.hours_worked,
+                    liq.hourly_rate,
+                    liq.gross_amount,
+                    safe_cell(liq.status),
+                ]
+            )
+        return response
