@@ -44,6 +44,8 @@
                             se calcula según estos ingredientes, y el costo de receta se deriva de ellos.
                         </p>
                         <div id="recipe-rows" class="mb-2">
+                            {# Guard: recipe_items requiere pk (instancia guardada) — evita crash al crear #}
+                            {% if form.instance.pk %}
                             {% for ri in form.instance.recipe_items.all %}
                             <div class="recipe-row row g-2 mb-2 align-items-center">
                                 <div class="col-7 col-md-8">
@@ -62,6 +64,9 @@
                             {% empty %}
                             <div class="text-muted small recipe-empty">Sin ingredientes cargados. Agregá los primeros abajo.</div>
                             {% endfor %}
+                            {% else %}
+                            <div class="text-muted small recipe-empty">Sin ingredientes cargados. Agregá los primeros abajo.</div>
+                            {% endif %}
                         </div>
                         <button type="button" class="btn btn-outline-primary btn-sm" id="recipe-add"><i class="bi bi-plus-lg me-1"></i>Agregar ingrediente</button>
 

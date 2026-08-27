@@ -145,3 +145,145 @@ def test_product_form_rechaza_elaborado_sin_receta(category):
     )
     assert not form.is_valid()
     assert "is_composed" in form.errors
+
+
+def _payload_elaborado(category, name, **extra):
+    """Payload base del form de producto (elaborado)."""
+    data = {
+        "name": name, "category": category.id, "unit": "unidad",
+        "purchase_price": "0", "sale_price": "50",
+        "stock_current": "0", "stock_min": "0",
+        "is_composed": "on",
+    }
+    data.update(extra)
+    return data
+
+
+def test_create_elaborado_con_receta_guarda_recipeitems(client_gerente, category):
+    """POST crear producto is_composed con ingredient_id[]/quantity[] → se
+    persisten los RecipeItem."""
+    from inventory.models import RecipeItem
+
+    ing = Product.objects.create(
+        name="Ing Cr", category=category, sale_price=Decimal("10"),
+        stock_current=Decimal("50"),
+    )
+    response = client_gerente.post(
+        reverse("inventory:product_create"),
+        _payload_elaborado(category, "Elab Cr", ingredient_id=[str(ing.pk)], quantity=["2"]),
+    )
+    assert response.status_code == 302
+    composed = Product.objects.get(name="Elab Cr")
+    assert composed.is_composed is True
+    assert composed.recipe_items.count() == 1
+    ri = composed.recipe_items.get()
+    assert ri.ingredient == ing
+    assert ri.quantity == Decimal("2")
+
+
+def test_update_elaborado_reemplaza_receta_sin_duplicar(client_gerente, category):
+    """POST editar cambiando los ingredientes → receta reemplazada (no duplica)."""
+    from inventory.models import RecipeItem
+
+    ing1 = Product.objects.create(
+        name="Ing U1", category=category, sale_price=Decimal("10"), stock_current=Decimal("50"),
+    )
+    ing2 = Product.objects.create(
+        name="Ing U2", category=category, sale_price=Decimal("10"), stock_current=Decimal("50"),
+    )
+    composed = Product.objects.create(
+        name="Elab U", category=category, sale_price=Decimal("50"), is_composed=True,
+    )
+    RecipeItem.objects.create(product=composed, ingredient=ing1, quantity=Decimal("1"))
+
+    response = client_gerente.post(
+        reverse("inventory:product_update", args=[composed.pk]),
+        _payload_elaborado(
+            category, "Elab U", sale_price="55",
+            ingredient_id=[str(ing2.pk)], quantity=["3"],
+        ),
+    )
+    assert response.status_code == 302
+    composed.refresh_from_db()
+    assert composed.recipe_items.count() == 1
+    ri = composed.recipe_items.get()
+    assert ri.ingredient == ing2
+    assert ri.quantity == Decimal("3")
+
+
+def test_update_elaborado_desmarcado_borra_receta(client_gerente, category):
+    """Desmarcar is_composed → se elimina la receta (cleanup)."""
+    from inventory.models import RecipeItem
+
+    ing = Product.objects.create(
+        name="Ing D", category=category, sale_price=Decimal("10"), stock_current=Decimal("50"),
+    )
+    composed = Product.objects.create(
+        name="Elab D", category=category, sale_price=Decimal("50"), is_composed=True,
+    )
+    RecipeItem.objects.create(product=composed, ingredient=ing, quantity=Decimal("1"))
+
+    payload = _payload_elaborado(category, "Elab D")
+    payload["is_composed"] = ""  # checkbox desmarcado
+    response = client_gerente.post(
+        reverse("inventory:product_update", args=[composed.pk]), payload
+    )
+    assert response.status_code == 302
+    composed.refresh_from_db()
+    assert composed.is_composed is False
+    assert composed.recipe_items.count() == 0
+
+
+def test_create_elaborado_ignora_propio_como_ingrediente(client_gerente, category):
+    """El propio producto como ingrediente → se ignora (no se auto-referencia)."""
+    from inventory.models import RecipeItem
+
+    ing = Product.objects.create(
+        name="Ing S", category=category, sale_price=Decimal("10"), stock_current=Decimal("50"),
+    )
+    response = client_gerente.post(
+        reverse("inventory:product_create"),
+        _payload_elaborado(
+            category, "Elab Self",
+            ingredient_id=[str(ing.pk), "999999"], quantity=["1", "1"],
+        ),
+    )
+    assert response.status_code == 302
+    composed = Product.objects.get(name="Elab Self")
+    # 999999 no existe → se ignora; solo queda el ingrediente válido
+    assert composed.recipe_items.count() == 1
+    # Update: el propio producto como ingrediente → ignorado
+    response = client_gerente.post(
+        reverse("inventory:product_update", args=[composed.pk]),
+        _payload_elaborado(
+            category, "Elab Self",
+            ingredient_id=[str(composed.pk)], quantity=["1"],
+        ),
+    )
+    composed.refresh_from_db()
+    assert composed.recipe_items.count() == 0
+
+
+def test_create_elaborado_sin_filas_error(client_gerente, category):
+    """is_composed sin filas de ingrediente → error de form (200, no se crea)."""
+    response = client_gerente.post(
+        reverse("inventory:product_create"),
+        _payload_elaborado(category, "Elab Sin Filas"),
+    )
+    assert response.status_code == 200  # re-render con error
+    assert not Product.objects.filter(name="Elab Sin Filas").exists()
+
+
+def test_product_form_contexto_ingredient_products(client_gerente, category):
+    """El editor de receta aparece: GET create/update expone ingredient_products."""
+    response = client_gerente.get(reverse("inventory:product_create"))
+    assert response.status_code == 200
+    assert "ingredient_products" in response.context
+
+    composed = Product.objects.create(
+        name="Elab Ctx", category=category, sale_price=Decimal("50"), is_composed=True,
+    )
+    response = client_gerente.get(reverse("inventory:product_update", args=[composed.pk]))
+    assert response.status_code == 200
+    ids = [p.pk for p in response.context["ingredient_products"]]
+    assert composed.pk not in ids  # el propio producto no es un ingrediente posible

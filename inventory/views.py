@@ -1,6 +1,8 @@
 """
 inventory — Vistas de categorías, productos, movimientos de stock y stock bajo.
 """
+from decimal import Decimal
+
 from django.contrib import messages
 from django.db.models import F
 from django.http import HttpResponseRedirect
@@ -10,7 +12,39 @@ from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 from core.mixins import RoleRequiredMixin
 
 from .forms import CategoryForm, ProductForm, StockMovementForm
-from .models import Category, Product, StockMovement
+from .models import Category, Product, RecipeItem, StockMovement
+
+
+def _apply_recipe(request, product):
+    """Persiste la receta de un producto desde los arrays paralelos del POST
+    (`ingredient_id[]` / `quantity[]`).
+
+    - Borra y recrea la receta (nunca duplica).
+    - Solo filas con ingrediente seleccionado, activo y cantidad > 0.
+    - El producto no puede usarse a sí mismo como ingrediente.
+    - Si `is_composed` quedó desmarcado → se elimina la receta (cleanup).
+    """
+    product.recipe_items.all().delete()
+    if not request.POST.get("is_composed"):
+        return
+    ingredient_ids = request.POST.getlist("ingredient_id")
+    quantities = request.POST.getlist("quantity")
+    for raw_id, raw_qty in zip(ingredient_ids, quantities):
+        if not raw_id:
+            continue
+        try:
+            ingredient_id = int(raw_id)
+            quantity = Decimal(str(raw_qty))
+        except (TypeError, ValueError):
+            continue
+        if ingredient_id == product.pk:
+            continue  # no auto-ingrediente
+        if quantity <= 0:
+            continue
+        ingredient = Product.objects.filter(pk=ingredient_id, is_active=True).first()
+        if ingredient is None:
+            continue
+        RecipeItem.objects.create(product=product, ingredient=ingredient, quantity=quantity)
 
 
 class CategoryListView(RoleRequiredMixin, ListView):
@@ -91,9 +125,18 @@ class ProductCreateView(RoleRequiredMixin, CreateView):
     success_url = reverse_lazy("inventory:product_list")
     roles = ["gerente", "admin"]
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["ingredient_products"] = (
+            Product.objects.filter(is_active=True).order_by("name")
+        )
+        return ctx
+
     def form_valid(self, form):
+        self.object = form.save()
+        _apply_recipe(self.request, self.object)
         messages.success(self.request, "Producto creado.")
-        return super().form_valid(form)
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class ProductUpdateView(RoleRequiredMixin, UpdateView):
@@ -103,9 +146,19 @@ class ProductUpdateView(RoleRequiredMixin, UpdateView):
     success_url = reverse_lazy("inventory:product_list")
     roles = ["gerente", "admin"]
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        qs = Product.objects.filter(is_active=True).order_by("name")
+        if self.object and self.object.pk:
+            qs = qs.exclude(pk=self.object.pk)  # el propio producto no es ingrediente
+        ctx["ingredient_products"] = qs
+        return ctx
+
     def form_valid(self, form):
+        self.object = form.save()
+        _apply_recipe(self.request, self.object)
         messages.success(self.request, "Producto actualizado.")
-        return super().form_valid(form)
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class ProductDeleteView(RoleRequiredMixin, DeleteView):

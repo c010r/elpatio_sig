@@ -45,11 +45,17 @@ class ProductForm(forms.ModelForm):
         promo_price = cleaned.get("promo_price")
         if promo_active and promo_price is None:
             self.add_error("promo_price", "Para activar la promo hay que cargar un precio promo.")
-        # Receta: un producto elaborado (is_composed=True) exige al menos un
-        # ingrediente (RecipeItem). La receta se administra por fuera del form.
+        # Receta: un producto elaborado (is_composed=True) exige al menos una
+        # fila de ingrediente en el POST. El editor del frontend siempre manda
+        # los arrays `ingredient_id[]`/`quantity[]` cuando el checkbox está
+        # marcado; funciona igual para create y update.
         if cleaned.get("is_composed"):
-            has_recipe = bool(self.instance.pk) and self.instance.recipe_items.exists()
-            if not has_recipe:
+            if hasattr(self.data, "getlist"):
+                rows = [pid for pid in self.data.getlist("ingredient_id") if pid]
+            else:  # dict plano (tests / llamadas directas)
+                pid = self.data.get("ingredient_id")
+                rows = [pid] if pid else []
+            if not rows:
                 self.add_error(
                     "is_composed",
                     "Un producto elaborado necesita al menos un ingrediente de receta.",
