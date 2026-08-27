@@ -153,6 +153,18 @@ a:hover { color: var(--ep-link-hover); }
     --bs-btn-active-border-color: #a30f33;
 }
 
+/* Outline danger: texto e iconos con el tono rose del tema (AA sobre blanco) */
+.btn-outline-danger {
+    --bs-btn-color: var(--ep-rose);
+    --bs-btn-border-color: #f2a7b4;
+    --bs-btn-hover-bg: var(--ep-rose);
+    --bs-btn-hover-border-color: var(--ep-rose);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: #a30f33;
+    --bs-btn-active-border-color: #a30f33;
+    --bs-btn-active-color: #fff;
+}
+
 /* ---------- Cards ---------- */
 .card {
     border: 1px solid var(--ep-border);
@@ -588,6 +600,7 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
 .form-check-input:checked { background-color: var(--ep-emerald); border-color: var(--ep-emerald); }
 .form-check-input:focus { box-shadow: 0 0 0 .2rem rgba(5, 150, 105, .14); border-color: var(--ep-emerald); }
 .form-label { font-weight: 600; color: var(--ep-ink-soft); font-size: .84rem; }
+.form-control::placeholder { color: var(--ep-ink-muted); }
 .help-text, .form-text { color: var(--ep-ink-muted); font-size: .78rem; }
 .alert { border-radius: var(--ep-radius-md); border: 1px solid transparent; }
 .alert-info { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
@@ -1137,6 +1150,21 @@ a.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--ep-shadow-md);
     --bs-btn-hover-bg: var(--ep-slate-soft);
     --bs-btn-hover-color: var(--ep-ink);
     --bs-btn-hover-border-color: var(--ep-border-strong);
+}
+
+/* Badges info/primary y outline-danger en dark (variantes translúcidas AA) */
+[data-theme="dark"] .badge.bg-info { background: rgba(56, 189, 248, .15); color: #7dd3fc; }
+[data-theme="dark"] .badge.bg-primary { background: rgba(59, 130, 246, .15); color: #93c5fd; }
+
+[data-theme="dark"] .btn-outline-danger {
+    --bs-btn-color: var(--ep-rose);
+    --bs-btn-border-color: rgba(251, 113, 133, .4);
+    --bs-btn-hover-bg: var(--ep-rose-soft);
+    --bs-btn-hover-color: var(--ep-rose-ink);
+    --bs-btn-hover-border-color: rgba(251, 113, 133, .5);
+    --bs-btn-active-bg: #be123c;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-border-color: #be123c;
 }
 
 /* Alertas en dark */
